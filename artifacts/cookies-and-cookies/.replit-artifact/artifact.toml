@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Cookies & Cookies"
+description = "A premium, warm ecommerce storefront for Cookies & Cookies, a distinctive Brazilian cookie brand. Customers can browse handmade cookies, build a custom box, choose delivery or pickup, and manage an easy shopping cart."
+version = "1.0.0"
+id = "artifacts/cookies-and-cookies"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24527
+
+[services.development]
+run = "pnpm --filter @workspace/cookies-and-cookies run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cookies-and-cookies", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/cookies-and-cookies/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24527"
+BASE_PATH = "/"

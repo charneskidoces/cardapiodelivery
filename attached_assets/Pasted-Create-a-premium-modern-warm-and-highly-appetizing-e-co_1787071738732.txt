@@ -1,0 +1,309 @@
+Create a premium, modern, warm, and highly appetizing e-commerce website for a cookie brand called "Cookies & Cookies".
+
+The website should be inspired by the attached brand identity reference: a sophisticated vintage-inspired packaging design featuring deep burgundy/wine red, warm cream, chocolate brown, vertical cream-and-burgundy stripes, elegant serif typography, and a handmade bakery feeling.
+
+The overall aesthetic should feel like a combination of a premium bakery, a nostalgic American cookie shop, and a contemporary Brazilian food brand. The design should be elegant but playful, cozy but sophisticated, and visually rich without feeling cluttered.
+
+BRAND IDENTITY:
+
+Primary color: deep burgundy / wine red
+Secondary color: warm ivory / cream
+Accent color: chocolate brown
+Small accents of caramel / golden beige
+Use vertical burgundy and cream stripes as a recurring visual element
+Use elegant, bold serif typography for headings
+Use a clean and highly readable sans-serif font for body text and buttons
+Rounded corners should be subtle and sophisticated
+Use soft shadows and warm lighting
+Avoid overly minimal, cold, futuristic, or generic SaaS aesthetics
+The visual language should feel tactile, handcrafted, delicious, nostalgic, and premium
+
+WEBSITE STRUCTURE:
+
+HERO SECTION
+
+Create a large, visually striking hero section immediately communicating that the brand sells freshly baked chocolate chip cookies.
+
+Show a large, close-up, appetizing cookie with melted chocolate chips and a slightly imperfect handmade texture. The cookie should look soft, thick, warm, and freshly baked.
+
+Headline:
+"Cookies & Cookies"
+
+Supporting message:
+"Feito para compartilhar (ou não)."
+
+Add a short English or Portuguese-friendly supporting sentence such as:
+"Cookies artesanais, feitos para transformar qualquer momento em uma desculpa para comer mais um."
+
+Primary CTA:
+"PEDIR AGORA"
+
+Secondary CTA:
+"VER COOKIES"
+
+Include subtle burgundy-and-cream striped details inspired by the packaging around the hero section.
+
+PRODUCT COLLECTION
+
+Create a section called:
+
+"Escolha seus cookies"
+
+Display beautiful product cards with large, mouth-watering cookie photography.
+
+Example products:
+
+Classic Chocolate Chip
+Double Chocolate
+Triple Chocolate
+Red Velvet
+Nutella
+White Chocolate & Macadamia
+Cookies & Cream
+Seasonal Special
+
+Each product card should include:
+
+Large product image
+Product name
+Short description
+Price
+Quantity selector
+"Adicionar ao pedido" button
+Optional badge such as "Mais vendido", "Novo" or "Favorito"
+
+The cards should feel premium and editorial rather than like a generic supermarket catalog.
+
+BUILD YOUR BOX
+
+Create a highly engaging section where customers can create their own cookie box.
+
+Headline:
+"Monte sua caixa"
+
+Allow customers to choose quantities such as:
+
+Box of 4
+Box of 6
+Box of 8
+Box of 12
+
+Then select the cookie flavors.
+
+Visually represent the box filling up as the customer selects cookies.
+
+Show:
+"Você já escolheu 4 de 6 cookies"
+
+Add a prominent CTA:
+"FINALIZAR CAIXA"
+
+DELIVERY AND PICKUP
+
+Create a dedicated section explaining the two ordering options.
+
+Option 1:
+"Delivery"
+"Receba seus cookies quentinhos onde estiver."
+
+Include a location/ZIP code input:
+"Digite seu CEP"
+
+Show estimated delivery time and delivery fee dynamically.
+
+Option 2:
+"Retirada no local"
+"Faça seu pedido online e retire diretamente na loja."
+
+Include:
+
+Store address
+Opening hours
+Estimated preparation time
+"Como chegar" button
+
+Use icons for delivery and store pickup.
+
+FEATURED PRODUCT / SIGNATURE COOKIE
+
+Create a visually immersive section dedicated to the brand's signature cookie.
+
+Use a giant close-up image of a thick chocolate chip cookie with visible chocolate chunks.
+
+Headline:
+"O cookie que começou tudo."
+
+Add a short emotional brand story:
+"Por fora, levemente crocante. Por dentro, macio e cheio de chocolate. Feito em pequenos lotes para chegar até você do jeito que um cookie deve ser."
+
+CTA:
+"EXPERIMENTAR"
+
+BRAND STORY
+
+Create an editorial-style "Sobre nós" section.
+
+Use warm photography of cookies, baking trays, chocolate chips, packaging, and the bakery environment.
+
+Headline:
+"Feito para compartilhar. Ou não."
+
+Explain that the brand was created around the idea of making exceptionally good cookies that people naturally want to share — although keeping one for yourself is completely acceptable.
+
+The writing should feel friendly, confident, slightly humorous, and authentic.
+
+CUSTOMER REVIEWS
+
+Create a testimonials section with real-looking customer review cards.
+
+Example:
+"Eu pedi uma caixa para dividir e terminei escondendo dois cookies na cozinha. Recomendo muito."
+
+★★★★★
+
+"Simplesmente um dos melhores cookies que já comi."
+
+★★★★★
+
+Use small customer avatars or initials and keep the design elegant.
+
+INSTAGRAM / SOCIAL PROOF
+
+Create a visual social media section showing a grid of beautiful cookie photography.
+
+Headline:
+"Cookies que merecem um close."
+
+Include a CTA:
+"@cookiesandcookies"
+
+The images should feel like premium food photography mixed with casual lifestyle photography.
+
+ORDERING CART
+
+Create a modern shopping cart drawer that slides in from the side.
+
+It should show:
+
+Selected products
+Quantity
+Price
+Subtotal
+Delivery fee
+Total
+
+Then provide two options:
+"DELIVERY"
+"RETIRAR NA LOJA"
+
+The checkout process should be extremely simple and mobile-friendly.
+
+CHECKOUT
+
+Create a clean checkout experience with:
+
+Customer information
+Phone number
+Address for delivery
+Delivery instructions
+Pickup option
+Date/time selection
+Payment method
+Order summary
+
+Make the checkout feel trustworthy and frictionless.
+
+HEADER / NAVIGATION
+
+Desktop navigation:
+
+Logo: "Cookies & Cookies"
+
+Menu:
+"Cookies"
+"Monte sua caixa"
+"Delivery"
+"Sobre nós"
+
+Right side:
+Location indicator
+Shopping bag/cart icon
+
+Primary header button:
+"Pedir agora"
+
+On mobile, use a clean hamburger menu and a persistent shopping cart button.
+
+FOOTER
+
+Use a deep burgundy background with cream typography.
+
+Include:
+Cookies & Cookies logo
+"Feito para compartilhar (ou não)."
+
+Links:
+Cookies
+Delivery
+Retirada
+Sobre nós
+Contato
+FAQ
+
+Include social media icons and store information.
+
+VISUAL DETAILS:
+
+Use the attached packaging image as the main visual reference for the brand identity.
+
+The website should incorporate:
+
+Burgundy and cream vertical stripes
+Warm off-white backgrounds
+Chocolate-brown photography
+Vintage-inspired serif typography
+Small decorative elements inspired by the circular "C&C" logo
+Paper-like textures used very subtly
+Soft shadows
+Warm natural lighting
+Editorial food photography
+Slightly playful compositions
+Premium bakery aesthetic
+
+Do NOT make the website look like a generic food delivery marketplace.
+
+It should feel like the official website of a distinctive cookie brand with its own personality.
+
+PHOTOGRAPHY STYLE:
+
+Use high-end food photography with warm, natural lighting.
+
+Cookies should look:
+
+Thick
+Soft in the center
+Slightly crispy on the edges
+Full of melted chocolate
+Handmade and imperfect
+Extremely appetizing
+
+Use close-up macro shots, cookies stacked together, broken cookies revealing their soft center, chocolate chips scattered around the composition, and warm bakery environments.
+
+USER EXPERIENCE:
+
+The most important objective is conversion.
+
+A customer should be able to open the website, see an irresistible cookie, choose a flavor, select delivery or pickup, add it to the cart, and complete an order with minimal friction.
+
+The website must be:
+
+Fully responsive
+Mobile-first
+Fast and visually polished
+Easy to navigate
+Highly conversion-oriented
+Accessible
+Designed for online ordering
+Optimized for repeat purchases
+
+The final design should feel like a premium, recognizable cookie brand — somewhere between a nostalgic bakery, a modern lifestyle brand, and a beautifully designed food e-commerce store.
