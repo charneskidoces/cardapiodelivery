@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -29,8 +29,10 @@ import {
   useLocation,
   Router as WouterRouter,
 } from 'wouter';
-import heroPhoto from '@assets/photo_4911319992771480930_y_1787071748985.jpg';
-import lineupPhoto from '@assets/photo_4911319992771480929_w_1787071752249.jpg';
+import redVelvetPhoto from '@assets/generated_images/red-velvet-cookie.jpg';
+import alpinoBlackPhoto from '@assets/generated_images/alpino-black-cookie.jpg';
+import kinderBuenoPhoto from '@assets/generated_images/kinder-bueno-cookie.jpg';
+import ccLogo from '@assets/generated_images/cc-logo-no-bg.png';
 
 const queryClient = new QueryClient();
 const money = (value: number) =>
@@ -47,23 +49,21 @@ type Product = {
 type CartItem = Product & { quantity: number; custom?: boolean };
 
 const products: Product[] = [
-  { id: 'classico', name: 'Chocolate clássico', descriptor: 'Massa de chocolate, gotas meio amargas e flor de sal.', price: 12.5, tag: 'O original', image: heroPhoto },
-  { id: 'triplo', name: 'Triplo chocolate', descriptor: 'Chocolate intenso em três texturas. Para os dias sérios.', price: 13.9, tag: 'Mais pedido', image: lineupPhoto },
-  { id: 'caramelo', name: 'Caramelo & flor de sal', descriptor: 'Centro macio de caramelo e crocantes dourados.', price: 14.5, image: heroPhoto },
-  { id: 'branco', name: 'Chocolate branco', descriptor: 'Baunilha, chocolate branco e uma pitada de nostalgia.', price: 13.5, image: lineupPhoto },
+  { id: 'red-velvet', name: 'Red Velvet', descriptor: 'Massa red velvet, chocolate branco e centro macio.', price: 15, tag: 'Favorito', image: redVelvetPhoto },
+  { id: 'alpino-black', name: 'Alpino Black', descriptor: 'Chocolate intenso, pedaços de chocolate e recheio cremoso.', price: 15, tag: 'Mais pedido', image: alpinoBlackPhoto },
+  { id: 'kinder-bueno', name: 'Kinder Bueno', descriptor: 'Avelã, chocolate ao leite e um recheio irresistível.', price: 15, tag: 'Novo', image: kinderBuenoPhoto },
 ];
 
 const flavors = [
-  { id: 'classico', label: 'Chocolate clássico', short: 'Clássico' },
-  { id: 'triplo', label: 'Triplo chocolate', short: 'Triplo' },
-  { id: 'caramelo', label: 'Caramelo & flor de sal', short: 'Caramelo' },
-  { id: 'branco', label: 'Chocolate branco', short: 'Branco' },
+  { id: 'red-velvet', label: 'Red Velvet', short: 'Red Velvet' },
+  { id: 'alpino-black', label: 'Alpino Black', short: 'Alpino Black' },
+  { id: 'kinder-bueno', label: 'Kinder Bueno', short: 'Kinder Bueno' },
 ];
 
 function Logo({ light = false }: { light?: boolean }) {
   return (
-    <div className={`brand-mark font-display text-[28px] font-bold tracking-tighter ${light ? 'text-[hsl(35_43%_94%)]' : 'wine-text'}`} aria-label="Cookies & Cookies">
-      C<span className="text-[20px] italic">&</span>C
+    <div className={`brand-mark flex items-center ${light ? 'drop-shadow-[0_2px_0_hsl(35_43%_94%/.15)]' : ''}`} aria-label="Cookies & Cookies">
+      <img src={ccLogo} alt="Cookies & Cookies" className="h-12 w-12 object-contain" />
     </div>
   );
 }
@@ -109,7 +109,7 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (product: Pr
   return (
     <article className="group relative" data-testid={`card-product-${product.id}`}>
       <div className="relative mb-5 aspect-[.88] overflow-hidden rounded-[2px] bg-[hsl(34_24%_87%)]">
-        <img src={product.image} alt={`${product.name} Cookies & Cookies`} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" style={{ objectPosition: product.id === 'triplo' || product.id === 'branco' ? '75% 50%' : '42% 56%' }} />
+        <img src={product.image} alt={`Cookie ${product.name} da Cookies & Cookies`} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" />
         {product.tag && <span className="absolute left-4 top-4 rounded-full bg-[hsl(39_51%_71%)] px-3 py-1 text-[10px] font-bold uppercase tracking-[.13em] chocolate-text">{product.tag}</span>}
         <button onClick={() => onAdd(product)} className="absolute bottom-4 right-4 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full wine-bg text-[hsl(35_43%_94%)] opacity-0 shadow-lg transition duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105" aria-label={`Adicionar ${product.name}`} data-testid={`button-add-${product.id}`}><Plus size={19} /></button>
       </div>
@@ -244,11 +244,11 @@ function Home() {
   const [cep, setCep] = useState('');
   const [estimate, setEstimate] = useState('');
   const [boxSize, setBoxSize] = useState(8);
-  const [boxFlavors, setBoxFlavors] = useState<Record<string, number>>({ classico: 2, triplo: 2, caramelo: 2, branco: 2 });
+   const [boxFlavors, setBoxFlavors] = useState<Record<string, number>>({ 'red-velvet': 3, 'alpino-black': 3, 'kinder-bueno': 2 });
   const [toast, setToast] = useState('');
   const bagCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const boxCount = Object.values(boxFlavors).reduce((sum, value) => sum + value, 0);
-  const boxPrice = boxSize === 4 ? 49 : boxSize === 8 ? 89 : 129;
+  const boxPrice = boxSize * 15;
   const addToBag = (product: Product, quantity = 1, custom = false) => {
     setItems((current) => {
       const existing = current.find((item) => item.id === product.id);
@@ -266,7 +266,7 @@ function Home() {
   });
   const addBox = () => {
     const detail = flavors.filter((flavor) => boxFlavors[flavor.id]).map((flavor) => `${boxFlavors[flavor.id]} ${flavor.short}`).join(', ');
-    addToBag({ id: `caixa-${boxSize}`, name: `Caixa com ${boxSize} cookies`, descriptor: detail, price: boxPrice, image: heroPhoto, tag: 'Montada por você' }, 1, true);
+    addToBag({ id: `caixa-${boxSize}`, name: `Caixa com ${boxSize} cookies`, descriptor: detail, price: boxPrice, image: alpinoBlackPhoto, tag: 'Montada por você' }, 1, true);
   };
   const estimateCep = () => {
     if (cep.replace(/\D/g, '').length >= 8) setEstimate('Chega hoje, entre 14h e 19h. A gente avisa quando sair do forno.');
@@ -283,27 +283,27 @@ function Home() {
             <div className="relative fade-up"><div className="mb-10 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(39_51%_71%)]"><span className="h-px w-8 bg-[hsl(39_51%_71%)]" /> Desde 2021 · São Paulo</div><h1 className="max-w-[580px] font-display text-[clamp(3.5rem,8vw,7.1rem)] font-semibold leading-[.89] tracking-[-.06em]">O cookie que começou tudo<span className="text-[hsl(39_51%_71%)]">.</span></h1></div>
             <div className="relative mt-12 flex items-end justify-between gap-8 fade-up fade-up-delay-2"><p className="max-w-[250px] text-sm leading-relaxed text-[hsl(35_20%_80%)]">Grandes, macios no centro, crocantes nas bordas. Feitos à mão e assados em pequenos lotes.</p><a href="#colecao" className="group flex h-20 w-20 shrink-0 items-center justify-center rounded-full caramel-bg text-center text-[10px] font-bold uppercase leading-tight tracking-wider chocolate-text transition-transform hover:rotate-6" data-testid="link-hero-order">Pedir<br />agora <ArrowRight size={15} className="ml-1 transition-transform group-hover:translate-x-1" /></a></div>
           </div>
-          <div className="relative min-h-[560px] overflow-hidden bg-[hsl(34_24%_87%)] lg:min-h-[650px]"><img src={heroPhoto} alt="Cookie de chocolate saindo de uma embalagem listrada Cookies & Cookies" className="h-full w-full object-cover" /><div className="absolute bottom-6 left-6 right-6 flex items-center justify-between border-t border-[hsl(35_43%_94%/.6)] pt-4 text-[hsl(35_43%_94%)]"><span className="text-[10px] font-bold uppercase tracking-[.19em]">A embalagem mais desejada</span><span className="font-display text-lg italic">feito com carinho</span></div></div>
+           <div className="relative min-h-[560px] overflow-hidden bg-[hsl(34_24%_87%)] lg:min-h-[650px]"><img src={redVelvetPhoto} alt="Cookie Red Velvet artesanal com chocolate branco" className="h-full w-full object-cover" /><div className="absolute bottom-6 left-6 right-6 flex items-center justify-between border-t border-[hsl(35_43%_94%/.6)] pt-4 text-[hsl(35_43%_94%)]"><span className="text-[10px] font-bold uppercase tracking-[.19em]">Red Velvet · R$ 15</span><span className="font-display text-lg italic">feito com carinho</span></div></div>
         </section>
 
         <section id="colecao" className="mx-auto max-w-[1240px] scroll-mt-24 px-5 py-16 lg:px-8 lg:py-24">
           <div className="mb-12 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] wine-text">A vitrine</p><h2 className="mt-3 font-display text-4xl leading-none sm:text-5xl">Escolha seus cookies</h2></div><p className="max-w-[270px] text-sm leading-relaxed text-[hsl(345_18%_42%)]">Cada receita tem seu momento. A única regra é não deixar para depois.</p></div>
-          <div className="grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">{products.map((product) => <ProductCard key={product.id} product={product} onAdd={addToBag} />)}</div>
+           <div className="grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">{products.map((product) => <ProductCard key={product.id} product={product} onAdd={addToBag} />)}</div>
           <div className="mt-16 flex justify-center"><a href="#monte-sua-caixa" className="flex items-center gap-3 border-b border-[hsl(346_48%_26%)] pb-2 text-[11px] font-bold uppercase tracking-[.16em] wine-text hover:gap-4" data-testid="link-build-box">Prefere uma seleção? Monte sua caixa <ArrowRight size={15} /></a></div>
         </section>
 
         <section id="nossa-historia" className="wine-bg scroll-mt-24 text-[hsl(35_43%_94%)]">
           <div className="mx-auto grid max-w-[1240px] items-stretch lg:grid-cols-[.95fr_1.05fr]">
             <div className="flex flex-col justify-center px-5 py-16 sm:px-12 lg:py-24 lg:pr-20"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(39_51%_71%)]">Nossa história</p><h2 className="mt-5 font-display text-5xl leading-[.95] sm:text-6xl">Cookies que merecem um close.</h2><p className="mt-7 max-w-[420px] text-sm leading-[1.8] text-[hsl(35_20%_80%)]">Começou com uma fornada na cozinha de casa e uma pergunta simples: e se o cookie fosse o evento principal? Hoje, continuamos fazendo do mesmo jeito — massa descansada, chocolate de verdade e atenção a cada fornada.</p><div className="mt-9 flex items-center gap-4 text-xs"><span className="flex h-10 w-10 items-center justify-center rounded-full border border-[hsl(39_51%_71%/.6)]"><Heart size={16} className="text-[hsl(39_51%_71%)]" /></span> <span>feito para compartilhar <em className="font-display text-base"> (ou não)</em></span></div></div>
-            <div className="relative min-h-[420px] overflow-hidden lg:min-h-[600px]"><img src={lineupPhoto} alt="Duas embalagens da Cookies & Cookies lado a lado" className="h-full w-full object-cover" /><div className="absolute right-5 top-5 flex h-20 w-20 rotate-12 items-center justify-center rounded-full caramel-bg text-center text-[9px] font-bold uppercase leading-tight tracking-wider chocolate-text">C&C<br />desde<br />2021</div></div>
+             <div className="relative min-h-[420px] overflow-hidden lg:min-h-[600px]"><img src={kinderBuenoPhoto} alt="Cookie Kinder Bueno artesanal com chocolate e avelã" className="h-full w-full object-cover" /><div className="absolute right-5 top-5 flex h-20 w-20 rotate-12 flex-col items-center justify-center rounded-full caramel-bg text-center text-[9px] font-bold uppercase leading-tight tracking-wider chocolate-text"><img src={ccLogo} alt="" className="h-9 w-9 object-contain" /><span>desde<br />2021</span></div></div>
           </div>
         </section>
 
         <section id="monte-sua-caixa" className="scroll-mt-24 px-5 py-16 sm:px-8 lg:py-24">
           <div className="mx-auto max-w-[1240px]"><div className="mb-12 max-w-[570px]"><p className="text-[10px] font-bold uppercase tracking-[.2em] wine-text">Para dividir, presentear ou esconder</p><h2 className="mt-3 font-display text-4xl leading-none sm:text-5xl">Monte sua caixa</h2><p className="mt-4 text-sm leading-relaxed text-[hsl(345_18%_42%)]">Você escolhe o tamanho, a gente cuida do laço. Misture os sabores até ficar com a sua cara.</p></div>
             <div className="grid border-y border-[hsl(34_24%_82%)] lg:grid-cols-[.8fr_1.2fr]">
-              <div className="stripe-panel relative min-h-[380px] overflow-hidden p-7 sm:p-12"><div className="absolute inset-5 border border-[hsl(35_43%_94%/.55)]" /><div className="relative flex h-full flex-col justify-between"><div className="flex justify-between"><span className="rounded-full bg-[hsl(35_43%_94%)] px-3 py-1 text-[9px] font-bold uppercase tracking-widest wine-text">C&C box</span><Gift className="text-[hsl(35_43%_94%)]" size={21} /></div><div className="relative mx-auto mt-16 w-[220px] rotate-[-4deg] bg-[hsl(35_43%_94%)] p-5 text-center shadow-xl"><div className="border border-[hsl(346_48%_26%)] p-4"><Logo /><p className="mt-4 text-[9px] font-semibold uppercase tracking-wider wine-text">Feito para compartilhar</p><div className="mx-auto mt-6 flex h-14 w-14 items-center justify-center rounded-full caramel-bg font-display text-xl wine-text">C&C</div></div></div><p className="relative mt-8 text-center font-display text-lg text-[hsl(35_43%_94%)]">uma caixa, muitos motivos</p></div></div>
-              <div className="bg-[hsl(36_45%_97%)] p-7 sm:p-12"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] wine-text">1. Tamanho</p><p className="mt-1 text-xs text-[hsl(345_18%_42%)]">Quantos cookies cabem no carinho?</p></div><span className="font-display text-2xl wine-text">{money(boxPrice)}</span></div><div className="mt-5 grid grid-cols-3 gap-2">{[4, 8, 12].map((size) => <button key={size} onClick={() => { setBoxSize(size); setBoxFlavors({ classico: size / 4, triplo: size / 4, caramelo: size / 4, branco: size / 4 }); }} className={`border py-3 text-sm transition-colors ${boxSize === size ? 'border-[hsl(346_48%_26%)] wine-bg text-[hsl(35_43%_94%)]' : 'border-[hsl(34_24%_82%)] hover:border-[hsl(346_48%_26%)]'}`} data-testid={`button-box-size-${size}`}>{size} cookies</button>)}</div><div className="mt-10"><p className="text-[10px] font-bold uppercase tracking-[.16em] wine-text">2. Seus sabores <span className="ml-2 font-normal tracking-normal text-[hsl(345_18%_42%)]">({boxCount}/{boxSize})</span></p><div className="mt-4 grid gap-3">{flavors.map((flavor) => <div className="flex items-center justify-between border-b border-[hsl(34_24%_82%)] py-3" key={flavor.id}><span className="text-sm">{flavor.label}</span><Quantity quantity={boxFlavors[flavor.id] || 0} onDecrease={() => toggleFlavor(flavor.id, -1)} onIncrease={() => toggleFlavor(flavor.id, 1)} testId={`box-${flavor.id}`} /></div>)}</div></div><button disabled={boxCount !== boxSize} onClick={addBox} className="mt-8 flex w-full items-center justify-center gap-3 rounded-full wine-bg py-4 text-[11px] font-bold uppercase tracking-[.16em] text-[hsl(35_43%_94%)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-add-box">Adicionar caixa à sacola <ArrowRight size={15} /></button></div>
+              <div className="stripe-panel relative min-h-[380px] overflow-hidden p-7 sm:p-12"><div className="absolute inset-5 border border-[hsl(35_43%_94%/.55)]" /><div className="relative flex h-full flex-col justify-between"><div className="flex justify-between"><span className="flex items-center gap-2 rounded-full bg-[hsl(35_43%_94%)] px-3 py-1 text-[9px] font-bold uppercase tracking-widest wine-text"><img src={ccLogo} alt="" className="h-5 w-5 object-contain" /> box</span><Gift className="text-[hsl(35_43%_94%)]" size={21} /></div><div className="relative mx-auto mt-16 w-[220px] rotate-[-4deg] bg-[hsl(35_43%_94%)] p-5 text-center shadow-xl"><div className="border border-[hsl(346_48%_26%)] p-4"><Logo /><p className="mt-4 text-[9px] font-semibold uppercase tracking-wider wine-text">Feito para compartilhar</p><div className="mx-auto mt-6 flex h-14 w-14 items-center justify-center rounded-full caramel-bg"><img src={ccLogo} alt="Logo Cookies & Cookies" className="h-12 w-12 object-contain" /></div></div></div><p className="relative mt-8 text-center font-display text-lg text-[hsl(35_43%_94%)]">uma caixa, muitos motivos</p></div></div>
+               <div className="bg-[hsl(36_45%_97%)] p-7 sm:p-12"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] wine-text">1. Tamanho</p><p className="mt-1 text-xs text-[hsl(345_18%_42%)]">R$ 15 por cookie, do seu jeito.</p></div><span className="font-display text-2xl wine-text">{money(boxPrice)}</span></div><div className="mt-5 grid grid-cols-3 gap-2">{[4, 8, 12].map((size) => <button key={size} onClick={() => { const first = Math.ceil(size / 3); const second = Math.floor(size / 3); setBoxSize(size); setBoxFlavors({ 'red-velvet': first, 'alpino-black': second, 'kinder-bueno': size - first - second }); }} className={`border py-3 text-sm transition-colors ${boxSize === size ? 'border-[hsl(346_48%_26%)] wine-bg text-[hsl(35_43%_94%)]' : 'border-[hsl(34_24%_82%)] hover:border-[hsl(346_48%_26%)]'}`} data-testid={`button-box-size-${size}`}>{size} cookies</button>)}</div><div className="mt-10"><p className="text-[10px] font-bold uppercase tracking-[.16em] wine-text">2. Seus sabores <span className="ml-2 font-normal tracking-normal text-[hsl(345_18%_42%)]">({boxCount}/{boxSize})</span></p><div className="mt-4 grid gap-3">{flavors.map((flavor) => <div className="flex items-center justify-between border-b border-[hsl(34_24%_82%)] py-3" key={flavor.id}><span className="text-sm">{flavor.label}</span><Quantity quantity={boxFlavors[flavor.id] || 0} onDecrease={() => toggleFlavor(flavor.id, -1)} onIncrease={() => toggleFlavor(flavor.id, 1)} testId={`box-${flavor.id}`} /></div>)}</div></div><button disabled={boxCount !== boxSize} onClick={addBox} className="mt-8 flex w-full items-center justify-center gap-3 rounded-full wine-bg py-4 text-[11px] font-bold uppercase tracking-[.16em] text-[hsl(35_43%_94%)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-add-box">Adicionar caixa à sacola <ArrowRight size={15} /></button></div>
             </div>
           </div>
         </section>
