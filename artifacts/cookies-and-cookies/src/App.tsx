@@ -191,8 +191,12 @@ function AppContent() {
       <header className="sticky top-0 z-30 bg-[#24130A]/95 backdrop-blur-md border-b border-[#3D2213]">
         <div className="max-w-4xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
 
-          {/* Logo + Nome */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {/* Logo + Nome — clicável para voltar ao topo */}
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex items-center gap-2 sm:gap-3 min-w-0 cursor-pointer bg-transparent border-none p-0 text-left active:scale-95 transition-transform duration-150"
+            aria-label="Voltar ao início"
+          >
             <img
               src="/images/charneski-c-transparent.png"
               alt={storeInfo.name}
@@ -207,7 +211,7 @@ function AppContent() {
                 {storeInfo.tagline}
               </span>
             </div>
-          </div>
+          </button>
 
           {/* Botão Sacola (Invertido: claro com texto escuro) */}
           <button
@@ -230,18 +234,18 @@ function AppContent() {
       <main className="flex-1">
 
         {/* ===== SEÇÃO HERO ===== */}
-        <section className="relative pt-6 pb-10 sm:pt-12 sm:pb-16 px-3 sm:px-6">
-          <div className="max-w-4xl mx-auto">
+        <section className="relative pt-6 pb-0 sm:pt-12 sm:pb-0 px-3 sm:px-6" style={{ backgroundColor: '#F2E8D5' }}>
+          <div className="max-w-4xl mx-auto pb-10 sm:pb-16">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-center">
 
               {/* Textos — em mobile fica abaixo da imagem (order-2) */}
               <div className="md:col-span-7 space-y-3 sm:space-y-5 text-center md:text-left fade-up order-2 md:order-1">
-                <h1 className="font-serif text-[1.85rem] leading-[1.2] sm:text-5xl lg:text-[3.25rem] font-bold text-[#F7EEDC] tracking-tight">
+                <h1 className="font-serif text-[1.85rem] leading-[1.2] sm:text-5xl lg:text-[3.25rem] font-bold text-[#3A2214] tracking-tight">
                   {heroInfo.title.includes(',') ? (
                     <>
                       {heroInfo.title.split(',')[0]},{' '}
                       <br className="hidden sm:inline" />
-                      <span className="italic text-[#D4AF7C]">
+                      <span className="italic text-[#7A4A28]">
                         {heroInfo.title.split(',').slice(1).join(',')}
                       </span>
                     </>
@@ -250,24 +254,24 @@ function AppContent() {
                   )}
                 </h1>
 
-                <p className="text-sm sm:text-base text-[#F7EEDC]/80 leading-relaxed max-w-md mx-auto md:mx-0">
+                <p className="text-sm sm:text-base text-[#3A2214]/75 leading-relaxed max-w-md mx-auto md:mx-0">
                   {heroInfo.subtitle}
                 </p>
 
                 {/* CTA somente em telas md+ — em mobile já está visível na tela */}
                 <button
                   onClick={scrollToProducts}
-                  className="hidden md:inline-flex items-center gap-2 bg-[#E8D7B7] hover:bg-[#F7EEDC] text-[#3A2214] px-6 py-3 rounded-full text-xs uppercase tracking-wider font-bold transition-all shadow-md"
+                  className="hidden md:inline-flex items-center gap-2 bg-[#3A2214] hover:bg-[#24130A] text-[#F2E8D5] px-6 py-3 rounded-full text-xs uppercase tracking-wider font-bold transition-all shadow-md"
                 >
                   Ver Cardápio
-                  <ChevronRight size={15} className="text-[#3A2214]" />
+                  <ChevronRight size={15} className="text-[#F2E8D5]" />
                 </button>
               </div>
 
               {/* Fotografia Principal */}
               <div className="md:col-span-5 fade-up order-1 md:order-2">
                 <div className="relative mx-auto max-w-[280px] sm:max-w-sm md:max-w-none">
-                  <div className="absolute -inset-1.5 sm:-inset-2 rounded-2xl border border-[#D4AF7C]/40 -rotate-1 pointer-events-none" />
+                  <div className="absolute -inset-1.5 sm:-inset-2 rounded-2xl border border-[#7A4A28]/50 -rotate-1 pointer-events-none" />
                   <div className="relative overflow-hidden rounded-2xl shadow-xl bg-[#331C0F] aspect-[4/5] border border-[#54321C]">
                     <img
                       src={heroInfo.image}
@@ -290,13 +294,19 @@ function AppContent() {
           </div>
         </section>
 
-        {/* Divisória decorativa */}
-        <div className="max-w-4xl mx-auto px-3 sm:px-6">
-          <div className="flex items-center gap-4 my-2">
-            <div className="h-px bg-[#4A2B18] flex-1" />
-            <div className="w-2 h-2 rotate-45 border border-[#D4AF7C] bg-[#24130A]" />
-            <div className="h-px bg-[#4A2B18] flex-1" />
-          </div>
+        {/* Curva SVG separando hero (claro) do cardápio (escuro) — fora da section para não ter padding */}
+        <div style={{ backgroundColor: '#F2E8D5', lineHeight: 0, display: 'block', overflow: 'hidden' }}>
+          <svg
+            viewBox="0 0 1440 70"
+            preserveAspectRatio="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ display: 'block', width: '100%', height: '70px' }}
+          >
+            <path
+              d="M0,0 C360,70 1080,70 1440,0 L1440,70 L0,70 Z"
+              fill="#24130A"
+            />
+          </svg>
         </div>
 
         {/* ===== SEÇÃO CARDÁPIO ===== */}
