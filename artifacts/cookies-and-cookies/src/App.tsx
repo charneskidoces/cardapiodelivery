@@ -427,24 +427,24 @@ function AppContent() {
                   </div>
 
                   {/* Informações */}
-                  <div className="p-4 sm:p-6 md:p-8 space-y-5">
+                  <div className="p-4 sm:p-6 md:p-8 space-y-5 bg-[#E8D7B7] rounded-b-2xl">
                     <div>
                       <div className="flex flex-col xs:flex-row xs:items-baseline justify-between gap-1 xs:gap-2">
-                        <h3 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-[#F7EEDC] leading-tight">
+                        <h3 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-[#3A2214] leading-tight">
                           {product.name}
                         </h3>
-                        <div className="text-lg sm:text-xl md:text-2xl font-bold text-[#D4AF7C] shrink-0">
+                        <div className="text-lg sm:text-xl md:text-2xl font-bold text-[#3A2214] shrink-0">
                           {formatBRL(currentOption?.price || 0)}
                         </div>
                       </div>
-                      <p className="text-xs sm:text-sm text-[#F7EEDC]/80 leading-relaxed mt-2">
+                      <p className="text-xs sm:text-sm text-[#3A2214]/80 leading-relaxed mt-2">
                         {product.description}
                       </p>
                     </div>
 
                     {/* Seletor de Apresentação */}
-                    <div className="space-y-2 pt-2 border-t border-[#54321C]">
-                      <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#D4AF7C] block">
+                    <div className="space-y-2 pt-2 border-t border-[#3A2214]/20">
+                      <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] block">
                         Selecione a Apresentação:
                       </label>
                       <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3">
@@ -491,12 +491,12 @@ function AppContent() {
                     </div>
 
                     {/* Quantidade + Subtotal */}
-                    <div className="pt-2 border-t border-[#54321C] flex items-center justify-between gap-4">
+                    <div className="pt-2 border-t border-[#3A2214]/20 flex items-center justify-between gap-4">
                       <div>
-                        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-[#D4AF7C] font-semibold block mb-1.5">
+                        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-[#8B5E3C] font-semibold block mb-1.5">
                           Quantidade
                         </span>
-                        <div className="inline-flex items-center rounded-full border border-[#D4AF7C]/50 bg-[#24130A] p-1">
+                        <div className="inline-flex items-center rounded-full border border-[#D4AF7C] bg-[#F7EEDC] p-1">
                           <button
                             onClick={() =>
                               setProductQuantities((prev) => ({
@@ -505,12 +505,12 @@ function AppContent() {
                               }))
                             }
                             disabled={currentQty <= 1}
-                            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center hover:bg-[#482815] disabled:opacity-30 transition-colors text-[#F7EEDC]"
+                            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center hover:bg-[#E8D7B7] disabled:opacity-30 transition-colors text-[#3A2214]"
                             aria-label="Diminuir quantidade"
                           >
                             <Minus size={14} />
                           </button>
-                          <span className="w-8 sm:w-9 text-center text-sm font-bold text-[#F7EEDC]">
+                          <span className="w-8 sm:w-9 text-center text-sm font-bold text-[#3A2214]">
                             {currentQty}
                           </span>
                           <button
@@ -520,7 +520,7 @@ function AppContent() {
                                 [product.id]: currentQty + 1,
                               }))
                             }
-                            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center hover:bg-[#482815] transition-colors text-[#F7EEDC]"
+                            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center hover:bg-[#E8D7B7] transition-colors text-[#3A2214]"
                             aria-label="Aumentar quantidade"
                           >
                             <Plus size={14} />
@@ -529,10 +529,10 @@ function AppContent() {
                       </div>
 
                       <div className="text-right">
-                        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-[#D4AF7C] font-semibold block">
+                        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-[#8B5E3C] font-semibold block">
                           Subtotal
                         </span>
-                        <span className="text-xl sm:text-2xl font-serif font-bold text-[#F7EEDC] block mt-0.5">
+                        <span className="text-xl sm:text-2xl font-serif font-bold text-[#3A2214] block mt-0.5">
                           {formatBRL(currentSubtotal)}
                         </span>
                       </div>
@@ -540,8 +540,8 @@ function AppContent() {
 
                     {/* Aviso frete grátis */}
                     {currentQty >= storeInfo.freeDeliveryMinUnits && (
-                      <div className="bg-[#24130A] border border-[#D4AF7C]/40 rounded-xl p-3 flex items-center gap-2 text-xs text-[#F7EEDC]">
-                        <Sparkles size={14} className="text-[#D4AF7C] shrink-0" />
+                      <div className="bg-[#3A2214]/10 border border-[#D4AF7C]/50 rounded-xl p-3 flex items-center gap-2 text-xs text-[#3A2214]">
+                        <Sparkles size={14} className="text-[#8B5E3C] shrink-0" />
                         <span>
                           <strong>Oba!</strong> Você tem direito à <strong>entrega grátis</strong>!
                         </span>
