@@ -1,347 +1,1333 @@
-import { type ReactNode, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ErrorBoundary } from '@/components/error-boundary';
-import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import NotFound from '@/pages/not-found';
+import React, { useState } from 'react';
 import {
+  ShoppingBag,
+  Plus,
+  Minus,
+  X,
   ArrowRight,
   Check,
-  ChevronDown,
-  CircleHelp,
-  Clock3,
-  Gift,
-  Heart,
-  Instagram,
   MapPin,
-  Menu,
-  Minus,
-  Plus,
-  ShoppingBag,
   Sparkles,
+  Heart,
+  MessageCircle,
+  Instagram,
+  Bike,
   Store,
-  Truck,
-  X,
+  Tag,
+  ChevronRight,
+  Navigation,
+  Lock,
+  ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
-import {
-  Route,
-  Switch,
-  useLocation,
-  Router as WouterRouter,
-} from 'wouter';
-import redVelvetPhoto from '@assets/generated_images/red-velvet-cookie.jpg';
-import alpinoBlackPhoto from '@assets/generated_images/alpino-black-cookie.jpg';
-import kinderBuenoPhoto from '@assets/generated_images/kinder-bueno-cookie.jpg';
-import ccLogo from '@assets/generated_images/cc-logo-no-bg.png';
+import { StoreProvider, useStore } from './context/StoreContext';
+import { type Product, type PresentationOption, type Coupon } from './data/menu';
+import { AdminModal } from './components/AdminModal';
 
-const queryClient = new QueryClient();
-const money = (value: number) =>
+export interface CartItem {
+  id: string;
+  productId: string;
+  productName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
+const formatBRL = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-type Product = {
-  id: string;
-  name: string;
-  descriptor: string;
-  price: number;
-  tag?: string;
-  image: string;
-};
-type CartItem = Product & { quantity: number; custom?: boolean };
-
-const products: Product[] = [
-  { id: 'red-velvet', name: 'Red Velvet', descriptor: 'Massa red velvet, chocolate branco e centro macio.', price: 15, tag: 'Favorito', image: redVelvetPhoto },
-  { id: 'alpino-black', name: 'Alpino Black', descriptor: 'Chocolate intenso, pedaços de chocolate e recheio cremoso.', price: 15, tag: 'Mais pedido', image: alpinoBlackPhoto },
-  { id: 'kinder-bueno', name: 'Kinder Bueno', descriptor: 'Avelã, chocolate ao leite e um recheio irresistível.', price: 15, tag: 'Novo', image: kinderBuenoPhoto },
-];
-
-const flavors = [
-  { id: 'red-velvet', label: 'Red Velvet', short: 'Red Velvet' },
-  { id: 'alpino-black', label: 'Alpino Black', short: 'Alpino Black' },
-  { id: 'kinder-bueno', label: 'Kinder Bueno', short: 'Kinder Bueno' },
-];
-
-function Logo({ light = false }: { light?: boolean }) {
+export default function App() {
   return (
-    <div className={`brand-mark flex items-center ${light ? 'drop-shadow-[0_2px_0_hsl(35_43%_94%/.15)]' : ''}`} aria-label="Cookies & Cookies">
-      <img src={ccLogo} alt="Cookies & Cookies" className="h-12 w-12 object-contain" />
+    <StoreProvider>
+      <AppContent />
+    </StoreProvider>
+  );
+}
+
+function AppContent() {
+  const { products, storeInfo, heroInfo, validateCoupon } = useStore();
+
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isBagOpen, setIsBagOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState<number>(0);
+
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [selectedImages, setSelectedImages] = useState<Record<string, string>>({});
+  const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    window.setTimeout(() => setToastMessage(null), 2800);
+  };
+
+  const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const subtotalCartValue = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const finalCartValue = Math.max(0, subtotalCartValue - couponDiscount);
+
+  const handleApplyCoupon = (code: string) => {
+    const res = validateCoupon(code, subtotalCartValue);
+    if (res.valid && res.coupon) {
+      setAppliedCoupon(res.coupon);
+      setCouponDiscount(res.discount);
+      showToast(`Cupom ${res.coupon.code} aplicado: - ${formatBRL(res.discount)}!`);
+      return { success: true, message: res.message };
+    } else {
+      return { success: false, message: res.message };
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponDiscount(0);
+    showToast('Cupom removido.');
+  };
+
+  const handleAddToCart = (
+    product: Product,
+    option: PresentationOption,
+    quantity: number,
+    customImage?: string
+  ) => {
+    const itemId = `${product.id}-${option.id}`;
+    setCart((prev) => {
+      const existing = prev.find((item) => item.id === itemId);
+      if (existing) {
+        return prev.map((item) =>
+          item.id === itemId ? { ...item, quantity: item.quantity + quantity } : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: itemId,
+          productId: product.id,
+          productName: product.name,
+          optionId: option.id,
+          optionName: option.name,
+          price: option.price,
+          quantity: quantity,
+          image: customImage || product.image,
+        },
+      ];
+    });
+
+    if (appliedCoupon) {
+      const newSubtotal = subtotalCartValue + option.price * quantity;
+      const res = validateCoupon(appliedCoupon.code, newSubtotal);
+      if (res.valid) {
+        setCouponDiscount(res.discount);
+      }
+    }
+
+    showToast(`${quantity}x ${product.name} adicionado à sacola!`);
+  };
+
+  const updateCartQuantity = (itemId: string, delta: number) => {
+    setCart((prev) => {
+      const updated = prev
+        .map((item) => {
+          if (item.id === itemId) {
+            const nextQty = item.quantity + delta;
+            return nextQty > 0 ? { ...item, quantity: nextQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[];
+
+      const newSubtotal = updated.reduce((acc, it) => acc + it.price * it.quantity, 0);
+      if (appliedCoupon) {
+        const res = validateCoupon(appliedCoupon.code, newSubtotal);
+        if (res.valid) {
+          setCouponDiscount(res.discount);
+        } else {
+          setAppliedCoupon(null);
+          setCouponDiscount(0);
+        }
+      }
+      return updated;
+    });
+  };
+
+  const removeCartItem = (itemId: string) => {
+    setCart((prev) => {
+      const updated = prev.filter((item) => item.id !== itemId);
+      const newSubtotal = updated.reduce((acc, it) => acc + it.price * it.quantity, 0);
+      if (appliedCoupon) {
+        const res = validateCoupon(appliedCoupon.code, newSubtotal);
+        if (res.valid) {
+          setCouponDiscount(res.discount);
+        } else {
+          setAppliedCoupon(null);
+          setCouponDiscount(0);
+        }
+      }
+      return updated;
+    });
+  };
+
+  const scrollToProducts = () => {
+    const el = document.getElementById('cardapio');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F7EEDC] text-[#3A2214] flex flex-col font-sans selection:bg-[#E8D7B7] selection:text-[#3A2214]">
+
+      {/* Barra superior de destaque */}
+      <div className="bg-[#3A2214] text-[#F7EEDC] text-[10px] sm:text-[11px] py-1.5 px-3 text-center tracking-wider uppercase font-medium flex items-center justify-center gap-2">
+        <Sparkles size={11} className="text-[#D4AF7C] shrink-0" />
+        <span className="line-clamp-1">{storeInfo.freeDeliveryRule}</span>
+      </div>
+
+      {/* Cabeçalho */}
+      <header className="sticky top-0 z-30 bg-[#F7EEDC]/96 backdrop-blur-md border-b border-[#E8D7B7]">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
+
+          {/* Logo + Nome */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <img
+              src="/images/charneski-c-transparent.png"
+              alt={storeInfo.name}
+              className="w-11 h-11 sm:w-14 sm:h-14 object-contain shrink-0"
+              style={{ filter: 'drop-shadow(0 2px 8px rgba(212,175,124,0.40))' }}
+            />
+            <div className="min-w-0">
+              <span className="font-serif text-lg sm:text-2xl font-bold tracking-tight text-[#3A2214] block leading-tight truncate">
+                {storeInfo.name}
+              </span>
+              <span className="text-[9px] sm:text-[11px] uppercase tracking-[0.18em] sm:tracking-[0.22em] text-[#8B5E3C] font-semibold block truncate">
+                {storeInfo.tagline}
+              </span>
+            </div>
+          </div>
+
+          {/* Botão Sacola */}
+          <button
+            onClick={() => setIsBagOpen(true)}
+            className="relative flex items-center gap-1.5 sm:gap-2 bg-[#3A2214] text-[#F7EEDC] px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider uppercase transition-all duration-200 hover:bg-[#8B5E3C] active:scale-95 shadow-sm shrink-0"
+            aria-label="Ver sacola de pedidos"
+          >
+            <ShoppingBag size={15} className="text-[#D4AF7C]" />
+            <span className="hidden sm:inline">Sacola</span>
+            {totalCartCount > 0 && (
+              <span className="bg-[#D4AF7C] text-[#3A2214] font-bold text-[9px] sm:text-[10px] w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center animate-pulse shrink-0">
+                {totalCartCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Conteúdo Principal */}
+      <main className="flex-1">
+
+        {/* ===== SEÇÃO HERO ===== */}
+        <section className="relative pt-6 pb-10 sm:pt-12 sm:pb-16 px-3 sm:px-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-center">
+
+              {/* Textos — em mobile fica abaixo da imagem (order-2) */}
+              <div className="md:col-span-7 space-y-3 sm:space-y-5 text-center md:text-left fade-up order-2 md:order-1">
+                <h1 className="font-serif text-[1.85rem] leading-[1.2] sm:text-5xl lg:text-[3.25rem] font-bold text-[#3A2214] tracking-tight">
+                  {heroInfo.title.includes(',') ? (
+                    <>
+                      {heroInfo.title.split(',')[0]},{' '}
+                      <br className="hidden sm:inline" />
+                      <span className="italic text-[#8B5E3C]">
+                        {heroInfo.title.split(',').slice(1).join(',')}
+                      </span>
+                    </>
+                  ) : (
+                    heroInfo.title
+                  )}
+                </h1>
+
+                <p className="text-sm sm:text-base text-[#3A2214]/80 leading-relaxed max-w-md mx-auto md:mx-0">
+                  {heroInfo.subtitle}
+                </p>
+
+                {/* CTA somente em telas md+ — em mobile já está visível na tela */}
+                <button
+                  onClick={scrollToProducts}
+                  className="hidden md:inline-flex items-center gap-2 bg-[#3A2214] text-[#F7EEDC] px-6 py-3 rounded-full text-xs uppercase tracking-wider font-semibold hover:bg-[#8B5E3C] transition-all shadow-md"
+                >
+                  Ver Cardápio
+                  <ChevronRight size={15} className="text-[#D4AF7C]" />
+                </button>
+              </div>
+
+              {/* Fotografia Principal */}
+              <div className="md:col-span-5 fade-up order-1 md:order-2">
+                <div className="relative mx-auto max-w-[280px] sm:max-w-sm md:max-w-none">
+                  <div className="absolute -inset-1.5 sm:-inset-2 rounded-2xl border border-[#D4AF7C]/40 -rotate-1 pointer-events-none" />
+                  <div className="relative overflow-hidden rounded-2xl shadow-xl bg-[#E8D7B7] aspect-[4/5] border border-[#E8D7B7]">
+                    <img
+                      src={heroInfo.image}
+                      alt={`${storeInfo.name} ${storeInfo.tagline}`}
+                      className="w-full h-full object-cover object-center transform hover:scale-105 transition-transform duration-700"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#3A2214]/75 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute bottom-3 left-3 right-3 text-[#F7EEDC] flex items-center justify-between text-[11px] sm:text-xs">
+                      <span className="font-serif italic font-semibold drop-shadow-sm">
+                        Enrolada no Ninho
+                      </span>
+                      <span className="bg-[#3A2214]/85 backdrop-blur-sm px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] uppercase tracking-wider border border-[#D4AF7C]/40">
+                        100% Artesanal
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Divisória decorativa */}
+        <div className="max-w-4xl mx-auto px-3 sm:px-6">
+          <div className="flex items-center gap-4 my-2">
+            <div className="h-px bg-[#E8D7B7] flex-1" />
+            <div className="w-2 h-2 rotate-45 border border-[#D4AF7C] bg-[#F7EEDC]" />
+            <div className="h-px bg-[#E8D7B7] flex-1" />
+          </div>
+        </div>
+
+        {/* ===== SEÇÃO CARDÁPIO ===== */}
+        <section id="cardapio" className="pt-8 pb-14 sm:pt-10 sm:pb-16 px-3 sm:px-6 scroll-mt-20">
+          <div className="max-w-2xl mx-auto space-y-8 sm:space-y-10">
+
+            {/* Cabeçalho da seção */}
+            <div className="text-center">
+              <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-[#8B5E3C] font-semibold block mb-1">
+                Nosso Cardápio
+              </span>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#3A2214]">
+                Escolha o seu doce
+              </h2>
+              <p className="text-xs sm:text-sm text-[#3A2214]/70 mt-1.5 max-w-xs sm:max-w-md mx-auto leading-relaxed">
+                Produzido em pequenos lotes para garantir máxima maciez, frescor e sabor inigualável.
+              </p>
+            </div>
+
+            {/* Cards de Produto */}
+            {products.map((product) => {
+              const currentSelectedOptionId =
+                selectedOptions[product.id] || product.options[0]?.id || '';
+              const currentOption =
+                product.options.find((o) => o.id === currentSelectedOptionId) ||
+                product.options[0];
+              const currentQty = productQuantities[product.id] || 1;
+              const currentSubtotal = (currentOption?.price || 0) * currentQty;
+              const currentImage = selectedImages[product.id] || product.image;
+
+              return (
+                <div
+                  key={product.id}
+                  className="bg-[#F7EEDC] rounded-2xl border-2 border-[#E8D7B7] shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden"
+                >
+                  {/* Imagem */}
+                  <div className="relative h-60 sm:h-72 md:h-80 w-full overflow-hidden bg-[#E8D7B7]">
+                    <img
+                      src={currentImage}
+                      alt={product.name}
+                      className="w-full h-full object-cover object-center transition-all duration-500"
+                    />
+                    <div className="absolute top-3 left-3">
+                      <span className="bg-[#3A2214] text-[#D4AF7C] text-[9px] sm:text-[10px] uppercase font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full tracking-wider border border-[#D4AF7C]/40 shadow-sm">
+                        {product.tagline}
+                      </span>
+                    </div>
+                    {product.ingredientsBadge && (
+                      <div className="absolute top-3 right-3 bg-[#F7EEDC]/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-medium text-[#3A2214] border border-[#E8D7B7] shadow-xs">
+                        {product.ingredientsBadge}
+                      </div>
+                    )}
+
+                    {/* Miniaturas de fotos */}
+                    {product.images && product.images.length > 1 && (
+                      <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-[#3A2214]/85 backdrop-blur-md px-2 py-1.5 rounded-full flex items-center gap-1.5 sm:gap-2 border border-[#D4AF7C]/40">
+                        {product.images.map((imgUrl, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() =>
+                              setSelectedImages((prev) => ({ ...prev, [product.id]: imgUrl }))
+                            }
+                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border-2 transition-transform ${
+                              currentImage === imgUrl
+                                ? 'border-[#D4AF7C] scale-110 shadow-sm'
+                                : 'border-transparent opacity-65 hover:opacity-100'
+                            }`}
+                            aria-label={`Ver foto ${idx + 1}`}
+                          >
+                            <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Informações */}
+                  <div className="p-4 sm:p-6 md:p-8 space-y-5">
+                    <div>
+                      <div className="flex flex-col xs:flex-row xs:items-baseline justify-between gap-1 xs:gap-2">
+                        <h3 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-[#3A2214] leading-tight">
+                          {product.name}
+                        </h3>
+                        <div className="text-lg sm:text-xl md:text-2xl font-bold text-[#8B5E3C] shrink-0">
+                          {formatBRL(currentOption?.price || 0)}
+                        </div>
+                      </div>
+                      <p className="text-xs sm:text-sm text-[#3A2214]/80 leading-relaxed mt-2">
+                        {product.description}
+                      </p>
+                    </div>
+
+                    {/* Seletor de Apresentação */}
+                    <div className="space-y-2 pt-2 border-t border-[#E8D7B7]">
+                      <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] block">
+                        Selecione a Apresentação:
+                      </label>
+                      <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3">
+                        {product.options.map((opt) => {
+                          const isSelected = currentSelectedOptionId === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedOptions((prev) => ({
+                                  ...prev,
+                                  [product.id]: opt.id,
+                                }))
+                              }
+                              className={`p-3 sm:p-3.5 rounded-xl border text-left transition-all relative ${
+                                isSelected
+                                  ? 'border-[#3A2214] bg-[#E8D7B7]/40 ring-1 ring-[#3A2214]'
+                                  : 'border-[#E8D7B7] bg-[#F7EEDC] hover:border-[#8B5E3C]/60'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-semibold text-xs sm:text-sm text-[#3A2214] leading-snug">
+                                  {opt.name}
+                                </span>
+                                <span className="text-sm font-bold text-[#8B5E3C] shrink-0">
+                                  {formatBRL(opt.price)}
+                                </span>
+                              </div>
+                              {opt.description && (
+                                <p className="text-[10px] sm:text-[11px] text-[#3A2214]/70 mt-1 line-clamp-2">
+                                  {opt.description}
+                                </p>
+                              )}
+                              {opt.badge && (
+                                <span className="inline-block mt-1.5 text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[#3A2214] text-[#D4AF7C]">
+                                  {opt.badge}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Quantidade + Subtotal */}
+                    <div className="pt-2 border-t border-[#E8D7B7] flex items-center justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-[#8B5E3C] font-semibold block mb-1.5">
+                          Quantidade
+                        </span>
+                        <div className="inline-flex items-center rounded-full border border-[#D4AF7C] bg-[#E8D7B7]/30 p-1">
+                          <button
+                            onClick={() =>
+                              setProductQuantities((prev) => ({
+                                ...prev,
+                                [product.id]: Math.max(1, currentQty - 1),
+                              }))
+                            }
+                            disabled={currentQty <= 1}
+                            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center hover:bg-[#E8D7B7] disabled:opacity-30 transition-colors text-[#3A2214]"
+                            aria-label="Diminuir quantidade"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span className="w-8 sm:w-9 text-center text-sm font-bold text-[#3A2214]">
+                            {currentQty}
+                          </span>
+                          <button
+                            onClick={() =>
+                              setProductQuantities((prev) => ({
+                                ...prev,
+                                [product.id]: currentQty + 1,
+                              }))
+                            }
+                            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center hover:bg-[#E8D7B7] transition-colors text-[#3A2214]"
+                            aria-label="Aumentar quantidade"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-[#8B5E3C] font-semibold block">
+                          Subtotal
+                        </span>
+                        <span className="text-xl sm:text-2xl font-serif font-bold text-[#3A2214] block mt-0.5">
+                          {formatBRL(currentSubtotal)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Aviso frete grátis */}
+                    {currentQty >= storeInfo.freeDeliveryMinUnits && (
+                      <div className="bg-[#E8D7B7]/50 border border-[#D4AF7C]/40 rounded-xl p-3 flex items-center gap-2 text-xs text-[#3A2214]">
+                        <Sparkles size={14} className="text-[#8B5E3C] shrink-0" />
+                        <span>
+                          <strong>Oba!</strong> Você tem direito à <strong>entrega grátis</strong>!
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Botão Adicionar */}
+                    <button
+                      type="button"
+                      onClick={() => handleAddToCart(product, currentOption, currentQty, currentImage)}
+                      className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-[#3A2214] text-[#F7EEDC] py-4 rounded-full text-[11px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.18em] font-semibold hover:bg-[#8B5E3C] transition-all shadow-md active:scale-[0.98] touch-manipulation"
+                    >
+                      <ShoppingBag size={16} className="text-[#D4AF7C] shrink-0" />
+                      <span>Adicionar ao pedido • {formatBRL(currentSubtotal)}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ===== PILARES DA MARCA ===== */}
+        <section className="bg-[#E8D7B7]/40 border-y border-[#E8D7B7] py-10 sm:py-12 px-3 sm:px-6">
+          <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center">
+            {[
+              {
+                icon: <Heart size={20} />,
+                title: 'Feito com Afeto',
+                text: 'Receita de família preparada em pequenos lotes artesanais.',
+              },
+              {
+                icon: <Sparkles size={20} />,
+                title: 'Ingredientes Selecionados',
+                text: 'Chocolate nobre, biscoito fresco e o legítimo leite Ninho.',
+              },
+              {
+                icon: <Bike size={20} />,
+                title: 'Entrega Grátis',
+                text: `A partir de ${storeInfo.freeDeliveryMinUnits} unidades para adoçar o seu dia.`,
+              },
+            ].map(({ icon, title, text }) => (
+              <div key={title} className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-[#3A2214] text-[#D4AF7C] flex items-center justify-center shrink-0 border border-[#D4AF7C]/30 shadow-sm">
+                  {icon}
+                </div>
+                <div>
+                  <h4 className="font-serif font-bold text-sm sm:text-base text-[#3A2214]">{title}</h4>
+                  <p className="text-xs sm:text-[13px] text-[#3A2214]/75 mt-1 leading-relaxed max-w-[200px] mx-auto">
+                    {text}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      {/* ===== RODAPÉ ===== */}
+      <footer className="bg-[#3A2214] text-[#F7EEDC] pt-10 pb-8 px-3 sm:px-6 border-t border-[#D4AF7C]/20">
+        <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
+
+          {/* Logo + Botões */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-5 pb-6 border-b border-[#D4AF7C]/20 text-center sm:text-left">
+            <div className="flex items-center gap-3">
+              <img
+                src="/images/charneski-c-transparent.png"
+                alt={storeInfo.name}
+                className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
+                style={{ filter: 'drop-shadow(0 1px 6px rgba(212,175,124,0.35)) brightness(1.1)' }}
+              />
+              <div>
+                <h3 className="font-serif text-lg sm:text-xl font-bold tracking-tight text-[#F7EEDC]">
+                  {storeInfo.name}
+                </h3>
+                <p className="text-[10px] sm:text-xs uppercase tracking-widest text-[#D4AF7C]">
+                  {storeInfo.tagline}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              <a
+                href={storeInfo.instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 sm:gap-2 bg-[#F7EEDC]/10 hover:bg-[#F7EEDC]/20 text-[#F7EEDC] px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-wider uppercase border border-[#D4AF7C]/30 transition-colors touch-manipulation"
+              >
+                <Instagram size={13} className="text-[#D4AF7C]" />
+                <span>Instagram</span>
+              </a>
+              <a
+                href={`https://wa.me/${storeInfo.whatsappNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 sm:gap-2 bg-[#D4AF7C] hover:bg-[#c29c67] text-[#3A2214] px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-wider uppercase transition-colors shadow-sm touch-manipulation"
+              >
+                <MessageCircle size={13} />
+                <span>WhatsApp</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Infos */}
+          <div className="flex items-center justify-center gap-2 text-xs text-[#E8D7B7]/80">
+            <MapPin size={13} className="text-[#D4AF7C] shrink-0" />
+            <span>{storeInfo.city}</span>
+          </div>
+
+          {/* Copyright */}
+          <div className="text-center pt-3 border-t border-[#D4AF7C]/10 space-y-2">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] sm:text-[11px] text-[#E8D7B7]/60">
+              <span>© {new Date().getFullYear()} {storeInfo.name}. Todos os direitos reservados.</span>
+              <span className="hidden xs:inline">•</span>
+              <button
+                type="button"
+                onClick={() => setIsAdminOpen(true)}
+                className="inline-flex items-center gap-1 text-[#D4AF7C] hover:text-[#F7EEDC] transition-colors underline underline-offset-2"
+              >
+                <Lock size={11} />
+                <span>Painel Administrativo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* ===== BARRA FLUTUANTE SACOLA ===== */}
+      {totalCartCount > 0 && !isBagOpen && !isCheckoutOpen && (
+        <div className="fixed bottom-3 sm:bottom-4 left-3 right-3 sm:left-4 sm:right-4 max-w-md mx-auto z-40 fade-up">
+          <button
+            onClick={() => setIsBagOpen(true)}
+            className="w-full bg-[#3A2214] text-[#F7EEDC] px-4 py-3.5 sm:py-4 rounded-full shadow-2xl flex items-center justify-between border-2 border-[#D4AF7C]/60 hover:bg-[#8B5E3C] transition-all touch-manipulation"
+          >
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="relative">
+                <ShoppingBag size={19} className="text-[#D4AF7C]" />
+                <span className="absolute -top-1.5 -right-1.5 bg-[#D4AF7C] text-[#3A2214] font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                  {totalCartCount}
+                </span>
+              </div>
+              <span className="text-[11px] sm:text-xs uppercase tracking-wider font-semibold">
+                Ver Sacola ({totalCartCount} {totalCartCount === 1 ? 'item' : 'itens'})
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm sm:text-base font-bold font-serif">{formatBRL(finalCartValue)}</span>
+              <ChevronRight size={16} className="text-[#D4AF7C]" />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* ===== TOAST ===== */}
+      {toastMessage && (
+        <div className="fixed top-4 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-auto z-50 bg-[#3A2214] text-[#F7EEDC] px-4 sm:px-5 py-3 rounded-full shadow-xl flex items-center gap-2 text-[11px] sm:text-xs font-semibold tracking-wide border border-[#D4AF7C]/40 fade-up max-w-sm mx-auto sm:mx-0">
+          <Check size={14} className="text-[#D4AF7C] shrink-0" />
+          <span className="line-clamp-1">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* ===== SACOLA LATERAL ===== */}
+      <CartDrawer
+        isOpen={isBagOpen}
+        onClose={() => setIsBagOpen(false)}
+        items={cart}
+        onUpdateQuantity={updateCartQuantity}
+        onRemoveItem={removeCartItem}
+        appliedCoupon={appliedCoupon}
+        couponDiscount={couponDiscount}
+        onApplyCoupon={handleApplyCoupon}
+        onRemoveCoupon={handleRemoveCoupon}
+        onCheckout={() => {
+          setIsBagOpen(false);
+          setIsCheckoutOpen(true);
+        }}
+      />
+
+      {/* ===== CHECKOUT ===== */}
+      {isCheckoutOpen && (
+        <CheckoutModal
+          items={cart}
+          appliedCoupon={appliedCoupon}
+          couponDiscount={couponDiscount}
+          onClose={() => setIsCheckoutOpen(false)}
+          onOrderSent={() => {
+            setCart([]);
+            setAppliedCoupon(null);
+            setCouponDiscount(0);
+            setIsCheckoutOpen(false);
+          }}
+        />
+      )}
+
+      {/* ===== ADMIN ===== */}
+      <AdminModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} />
     </div>
   );
 }
 
-function Header({ bagCount, onBag, onMenu }: { bagCount: number; onBag: () => void; onMenu: () => void }) {
+// ==========================================
+// COMPONENTE: SACOLA LATERAL (CART DRAWER)
+// ==========================================
+function CartDrawer({
+  isOpen,
+  onClose,
+  items,
+  onUpdateQuantity,
+  onRemoveItem,
+  appliedCoupon,
+  couponDiscount,
+  onApplyCoupon,
+  onRemoveCoupon,
+  onCheckout,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  items: CartItem[];
+  onUpdateQuantity: (id: string, delta: number) => void;
+  onRemoveItem: (id: string) => void;
+  appliedCoupon: Coupon | null;
+  couponDiscount: number;
+  onApplyCoupon: (code: string) => { success: boolean; message: string };
+  onRemoveCoupon: () => void;
+  onCheckout: () => void;
+}) {
+  const { storeInfo } = useStore();
+  const [couponInput, setCouponInput] = useState('');
+  const [couponMsg, setCouponMsg] = useState<{ text: string; isError: boolean } | null>(null);
+
+  if (!isOpen) return null;
+
+  const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const totalUnits = items.reduce((acc, item) => acc + item.quantity, 0);
+  const hasFreeDelivery = totalUnits >= storeInfo.freeDeliveryMinUnits;
+  const finalTotal = Math.max(0, subtotal - couponDiscount);
+
+  const handleCouponSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponInput.trim()) return;
+    const res = onApplyCoupon(couponInput);
+    setCouponMsg({ text: res.message, isError: !res.success });
+    if (res.success) setCouponInput('');
+  };
+
   return (
-    <header className="sticky top-0 z-30 border-b border-[hsl(34_24%_82%/.65)] bg-[hsl(35_43%_94%/.92)] backdrop-blur-md">
-      <div className="wine-bg flex h-8 items-center justify-center px-4 text-[10px] font-semibold uppercase tracking-[.2em] text-[hsl(35_43%_94%)]">
-        Feito para compartilhar (ou não).
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-[#3A2214]/50 backdrop-blur-[2px] transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Drawer — largura total em mobile, max-md em telas maiores */}
+      <div className="cart-enter relative w-full sm:max-w-md bg-[#F7EEDC] h-full shadow-2xl flex flex-col z-10 border-l border-[#E8D7B7]">
+
+        {/* Cabeçalho */}
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-[#E8D7B7] flex items-center justify-between bg-[#F7EEDC]">
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8B5E3C] block">
+              Seu Pedido
+            </span>
+            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#3A2214] mt-0.5">Sua Sacola</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#E8D7B7] text-[#3A2214] transition-colors touch-manipulation"
+            aria-label="Fechar sacola"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Itens */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-3 sm:space-y-4">
+          {items.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-[#E8D7B7]/60 flex items-center justify-center text-[#8B5E3C]">
+                <ShoppingBag size={28} />
+              </div>
+              <h3 className="font-serif text-xl font-bold text-[#3A2214]">Sacola vazia</h3>
+              <p className="text-xs text-[#3A2214]/70 max-w-xs leading-relaxed">
+                Adicione uma deliciosa palha italiana artesanal para adoçar o seu dia.
+              </p>
+              <button
+                onClick={onClose}
+                className="mt-2 text-xs uppercase tracking-wider font-semibold bg-[#3A2214] text-[#F7EEDC] px-6 py-3 rounded-full hover:bg-[#8B5E3C] transition-colors touch-manipulation"
+              >
+                Escolher produto
+              </button>
+            </div>
+          ) : (
+            <>
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3 sm:p-4 rounded-xl bg-[#E8D7B7]/30 border border-[#E8D7B7] flex gap-3 items-start"
+                >
+                  <img
+                    src={item.image}
+                    alt={item.productName}
+                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover bg-[#E8D7B7] shrink-0 border border-[#D4AF7C]/40"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-serif font-bold text-sm text-[#3A2214] leading-snug">
+                        {item.productName}
+                      </h4>
+                      <button
+                        onClick={() => onRemoveItem(item.id)}
+                        className="text-[10px] uppercase tracking-wider text-[#8B5E3C] hover:text-[#3A2214] shrink-0 touch-manipulation py-0.5"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                    <span className="text-[11px] text-[#8B5E3C] font-medium block mt-0.5">
+                      {item.optionName}
+                    </span>
+                    <div className="mt-2.5 flex items-center justify-between">
+                      <div className="inline-flex items-center rounded-full border border-[#D4AF7C] bg-[#F7EEDC] p-0.5">
+                        <button
+                          onClick={() => onUpdateQuantity(item.id, -1)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#E8D7B7] text-[#3A2214] transition-colors touch-manipulation"
+                          aria-label="Diminuir"
+                        >
+                          <Minus size={12} />
+                        </button>
+                        <span className="w-6 text-center text-xs font-bold text-[#3A2214]">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => onUpdateQuantity(item.id, 1)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#E8D7B7] text-[#3A2214] transition-colors touch-manipulation"
+                          aria-label="Aumentar"
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+                      <span className="font-bold text-sm text-[#3A2214]">
+                        {formatBRL(item.price * item.quantity)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Cupom */}
+              <div className="pt-3 border-t border-[#E8D7B7] space-y-2">
+                <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] flex items-center gap-1.5">
+                  <Tag size={12} />
+                  <span>Cupom de Desconto</span>
+                </label>
+
+                {appliedCoupon ? (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-emerald-800 bg-emerald-200 px-2 py-0.5 rounded">
+                        {appliedCoupon.code}
+                      </span>
+                      <span className="text-emerald-700 font-semibold">- {formatBRL(couponDiscount)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onRemoveCoupon}
+                      className="text-xs text-emerald-800 hover:text-red-700 underline font-medium touch-manipulation"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleCouponSubmit} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase());
+                        setCouponMsg(null);
+                      }}
+                      placeholder="Código do cupom..."
+                      className="flex-1 px-3 py-2.5 rounded-xl border border-[#E8D7B7] bg-[#F7EEDC] text-xs font-mono uppercase font-semibold text-[#3A2214] focus:outline-none focus:border-[#3A2214] min-w-0"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-[#3A2214] text-[#F7EEDC] px-3 sm:px-4 py-2.5 rounded-xl text-xs font-semibold uppercase hover:bg-[#8B5E3C] transition-colors shrink-0 touch-manipulation"
+                    >
+                      Aplicar
+                    </button>
+                  </form>
+                )}
+
+                {couponMsg && (
+                  <p className={`text-[11px] ${couponMsg.isError ? 'text-red-700' : 'text-emerald-700 font-semibold'}`}>
+                    {couponMsg.text}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Rodapé Sacola */}
+        {items.length > 0 && (
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-t border-[#E8D7B7] bg-[#F7EEDC] space-y-3">
+            <div className="text-xs flex items-center gap-2 p-2.5 rounded-lg bg-[#E8D7B7]/40 text-[#3A2214]">
+              <Bike size={15} className="text-[#8B5E3C] shrink-0" />
+              <span>
+                {hasFreeDelivery ? (
+                  <strong>Parabéns! Você ganhou entrega grátis!</strong>
+                ) : (
+                  <span>
+                    Adicione mais {storeInfo.freeDeliveryMinUnits - totalUnits} unidade{storeInfo.freeDeliveryMinUnits - totalUnits !== 1 ? 's' : ''} para entrega grátis.
+                  </span>
+                )}
+              </span>
+            </div>
+
+            <div className="space-y-1 text-xs text-[#3A2214]">
+              <div className="flex justify-between">
+                <span className="text-[#8B5E3C]">Subtotal dos itens</span>
+                <span>{formatBRL(subtotal)}</span>
+              </div>
+              {appliedCoupon && (
+                <div className="flex justify-between text-emerald-800 font-semibold">
+                  <span>Desconto ({appliedCoupon.code})</span>
+                  <span>- {formatBRL(couponDiscount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-baseline pt-2 border-t border-[#E8D7B7]">
+                <span className="text-[#8B5E3C] uppercase tracking-wider font-semibold text-xs">Total</span>
+                <span className="font-serif text-xl sm:text-2xl font-bold text-[#3A2214]">
+                  {formatBRL(finalTotal)}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={onCheckout}
+                className="w-full flex items-center justify-center gap-2 bg-[#3A2214] text-[#F7EEDC] py-4 rounded-full text-xs uppercase tracking-[0.15em] sm:tracking-[0.18em] font-semibold hover:bg-[#8B5E3C] transition-all shadow-md active:scale-[0.98] touch-manipulation"
+              >
+                <span>Finalizar Pedido</span>
+                <ArrowRight size={15} className="text-[#D4AF7C]" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 text-center text-xs uppercase tracking-wider font-semibold text-[#8B5E3C] hover:text-[#3A2214] touch-manipulation"
+              >
+                Continuar escolhendo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-      <div className="mx-auto flex h-[76px] max-w-[1240px] items-center justify-between px-5 lg:px-8">
-        <button className="md:hidden" onClick={onMenu} aria-label="Abrir menu" data-testid="button-open-menu"><Menu size={22} /></button>
-        <a href="#top" className="md:mr-16" data-testid="link-logo"><Logo /></a>
-        <nav className="hidden items-center gap-8 text-[11px] font-semibold uppercase tracking-[.15em] md:flex" aria-label="Navegação principal">
-          <a href="#colecao" className="transition-colors hover:wine-text" data-testid="link-collection">Coleção</a>
-          <a href="#monte-sua-caixa" className="transition-colors hover:wine-text" data-testid="link-custom-box">Monte sua caixa</a>
-          <a href="#nossa-historia" className="transition-colors hover:wine-text" data-testid="link-story">Nossa história</a>
-        </nav>
-        <div className="flex items-center gap-5">
-          <a href="#encontre" className="hidden text-[11px] font-semibold uppercase tracking-[.15em] md:block" data-testid="link-find-us">Onde encontrar</a>
-          <button onClick={onBag} className="group relative flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.15em]" data-testid="button-open-bag">
-            <ShoppingBag size={19} strokeWidth={1.7} className="transition-transform group-hover:-rotate-6" />
-            <span className="hidden sm:inline">Sacola</span>
-            <span className="wine-bg flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] text-[hsl(35_43%_94%)]" data-testid="text-bag-count">{bagCount}</span>
+    </div>
+  );
+}
+
+// ==========================================
+// COMPONENTE: MODAL DE FINALIZAÇÃO (CHECKOUT)
+// ==========================================
+function CheckoutModal({
+  items,
+  appliedCoupon,
+  couponDiscount,
+  onClose,
+  onOrderSent,
+}: {
+  items: CartItem[];
+  appliedCoupon: Coupon | null;
+  couponDiscount: number;
+  onClose: () => void;
+  onOrderSent: () => void;
+}) {
+  const { storeInfo } = useStore();
+
+  const [customerName, setCustomerName] = useState('');
+  const [deliveryType, setDeliveryType] = useState<'entrega' | 'retirada'>('entrega');
+  const [address, setAddress] = useState('');
+  const [reference, setReference] = useState('');
+  const [notes, setNotes] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Geolocalização GPS
+  const [isLocating, setIsLocating] = useState(false);
+  const [gpsCoords, setGpsCoords] = useState<{
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+    mapsUrl: string;
+  } | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+
+  const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const totalUnits = items.reduce((acc, item) => acc + item.quantity, 0);
+  const hasFreeDelivery = totalUnits >= storeInfo.freeDeliveryMinUnits;
+  const finalTotal = Math.max(0, subtotal - couponDiscount);
+
+  const handleCaptureLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsError('Seu navegador não suporta geolocalização.');
+      return;
+    }
+    setIsLocating(true);
+    setGpsError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        setGpsCoords({ latitude, longitude, accuracy: Math.round(accuracy), mapsUrl });
+        setIsLocating(false);
+      },
+      (error) => {
+        setIsLocating(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setGpsError('Permissão de localização negada. Ative nas configurações do navegador.');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setGpsError('Localização GPS indisponível no momento.');
+            break;
+          case error.TIMEOUT:
+            setGpsError('Tempo esgotado ao buscar localização.');
+            break;
+          default:
+            setGpsError('Não foi possível obter a localização.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  };
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!customerName.trim()) errs.customerName = 'Por favor, informe seu nome.';
+    if (deliveryType === 'entrega' && !address.trim() && !gpsCoords)
+      errs.address = 'Informe seu endereço ou compartilhe a localização pelo GPS.';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!validate()) return;
+
+    const itemsText = items
+      .map(
+        (it) =>
+          `• ${it.quantity}x ${it.productName} (${it.optionName}) - ${formatBRL(it.price * it.quantity)}`
+      )
+      .join('\n');
+
+    let deliveryDetails = '';
+    if (deliveryType === 'entrega') {
+      deliveryDetails = `🛵 *Forma de recebimento:* Entrega`;
+      if (address.trim()) deliveryDetails += `\n📍 *Endereço:* ${address.trim()}`;
+      if (reference.trim()) deliveryDetails += `\n🏷️ *Ponto de referência:* ${reference.trim()}`;
+      if (gpsCoords) deliveryDetails += `\n📍 *Localização em tempo real (GPS):*\n${gpsCoords.mapsUrl}`;
+      deliveryDetails += hasFreeDelivery
+        ? `\n✨ *Entrega:* Grátis (a partir de ${storeInfo.freeDeliveryMinUnits} unidades)`
+        : `\n✨ *Taxa de entrega:* A combinar`;
+    } else {
+      deliveryDetails = `🏬 *Forma de recebimento:* Retirada no local`;
+    }
+
+    let couponText = '';
+    if (appliedCoupon && couponDiscount > 0)
+      couponText = `\n🎟️ *Cupom Aplicado:* ${appliedCoupon.code} (- ${formatBRL(couponDiscount)})`;
+
+    const notesText = notes.trim() ? `\n📝 *Observações:* ${notes.trim()}` : '';
+
+    const message = `*Olá, ${storeInfo.name}! Gostaria de fazer um pedido:*
+
+🧁 *Itens do Pedido:*
+${itemsText}
+${couponText}
+💰 *Total Final:* ${formatBRL(finalTotal)}
+${deliveryDetails}${notesText}
+
+👤 *Cliente:* ${customerName.trim()}
+📍 ${storeInfo.city}`;
+
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/${storeInfo.whatsappNumber}?text=${encoded}`, '_blank');
+    onOrderSent();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-[#3A2214]/60 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+
+      {/* Modal — bottom sheet em mobile, centralizado em desktop */}
+      <div className="modal-enter relative w-full sm:max-w-lg bg-[#F7EEDC] sm:rounded-2xl rounded-t-2xl shadow-2xl border border-[#E8D7B7] sm:border-2 overflow-hidden z-10 sm:my-6 max-h-[92vh] sm:max-h-[88vh] flex flex-col">
+
+        {/* Cabeçalho */}
+        <div className="px-4 sm:px-6 py-4 border-b border-[#E8D7B7] flex items-center justify-between bg-[#F7EEDC] shrink-0">
+          {/* Handle pill (mobile) */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-[#E8D7B7] sm:hidden" />
+          <div className="pt-2 sm:pt-0">
+            <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#8B5E3C] block">
+              Quase pronto
+            </span>
+            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#3A2214] mt-0.5">Finalizar Pedido</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#E8D7B7] text-[#3A2214] transition-colors shrink-0 touch-manipulation"
+            aria-label="Fechar"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Formulário (scrollável) */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5">
+
+          {/* Nome */}
+          <div>
+            <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] block mb-1.5">
+              Seu Nome <span className="text-[#3A2214]">*</span>
+            </label>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => {
+                setCustomerName(e.target.value);
+                if (errors.customerName) setErrors((prev) => ({ ...prev, customerName: '' }));
+              }}
+              placeholder="Como podemos te chamar?"
+              className={`w-full px-4 py-3 rounded-xl border bg-[#F7EEDC] text-[#3A2214] text-sm focus:outline-none transition-colors ${
+                errors.customerName
+                  ? 'border-red-500 focus:border-red-500'
+                  : 'border-[#E8D7B7] focus:border-[#3A2214]'
+              }`}
+            />
+            {errors.customerName && (
+              <p className="text-red-600 text-xs mt-1">{errors.customerName}</p>
+            )}
+          </div>
+
+          {/* Tipo de Entrega */}
+          <div>
+            <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] block mb-2">
+              Forma de Recebimento
+            </label>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              {[
+                { type: 'entrega' as const, icon: <Bike size={18} className="text-[#8B5E3C]" />, label: 'Entrega (Delivery)' },
+                { type: 'retirada' as const, icon: <Store size={18} className="text-[#8B5E3C]" />, label: 'Retirada no Local' },
+              ].map(({ type, icon, label }) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setDeliveryType(type)}
+                  className={`p-3 sm:p-3.5 rounded-xl border flex flex-col items-center justify-center gap-1.5 text-xs font-semibold transition-all touch-manipulation ${
+                    deliveryType === type
+                      ? 'border-[#3A2214] bg-[#E8D7B7]/50 text-[#3A2214] ring-1 ring-[#3A2214]'
+                      : 'border-[#E8D7B7] bg-[#F7EEDC] text-[#8B5E3C] hover:border-[#8B5E3C]'
+                  }`}
+                >
+                  {icon}
+                  <span className="text-center leading-tight">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Endereço + GPS */}
+          {deliveryType === 'entrega' && (
+            <div className="space-y-4 pt-2 border-t border-[#E8D7B7]">
+              {/* GPS */}
+              <div className="p-3 sm:p-4 rounded-xl border-2 border-dashed border-[#D4AF7C] bg-[#E8D7B7]/30 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] sm:text-xs uppercase font-bold tracking-wider text-[#3A2214] flex items-center gap-1.5">
+                    <Navigation size={14} className="text-[#8B5E3C] shrink-0" />
+                    <span>Localização GPS em Tempo Real</span>
+                  </span>
+                  {gpsCoords && (
+                    <span className="text-[9px] sm:text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                      <Check size={10} />
+                      Ativada
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[#3A2214]/75 leading-relaxed">
+                  Compartilhe sua localização em tempo real com o entregador via Google Maps.
+                </p>
+
+                {gpsCoords ? (
+                  <div className="p-3 bg-[#F7EEDC] rounded-lg border border-[#D4AF7C]/40 space-y-2">
+                    <div className="flex items-center justify-between text-xs gap-2">
+                      <span className="font-semibold text-emerald-800 flex items-center gap-1">
+                        <Check size={13} />
+                        <span>Capturada! (Precisão ~{gpsCoords.accuracy}m)</span>
+                      </span>
+                      <a
+                        href={gpsCoords.mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-[#8B5E3C] hover:underline flex items-center gap-0.5 shrink-0"
+                      >
+                        <span>Ver mapa</span>
+                        <ExternalLink size={10} />
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCaptureLocation}
+                      className="text-[11px] text-[#8B5E3C] underline hover:text-[#3A2214] touch-manipulation"
+                    >
+                      Atualizar localização GPS
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCaptureLocation}
+                    disabled={isLocating}
+                    className="w-full flex items-center justify-center gap-2 bg-[#3A2214] text-[#F7EEDC] py-3 rounded-xl text-xs font-semibold uppercase tracking-wider hover:bg-[#8B5E3C] transition-colors shadow-sm disabled:opacity-50 touch-manipulation"
+                  >
+                    <Navigation size={14} className="text-[#D4AF7C]" />
+                    <span>
+                      {isLocating ? 'Obtendo localização...' : 'Ligar Localizador GPS'}
+                    </span>
+                  </button>
+                )}
+
+                {gpsError && (
+                  <p className="text-red-600 text-xs flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0" />
+                    <span>{gpsError}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Endereço */}
+              <div>
+                <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] block mb-1.5">
+                  Endereço Completo <span className="text-[#3A2214]">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    if (errors.address) setErrors((prev) => ({ ...prev, address: '' }));
+                  }}
+                  placeholder="Rua, número e bairro"
+                  className={`w-full px-4 py-3 rounded-xl border bg-[#F7EEDC] text-[#3A2214] text-sm focus:outline-none transition-colors ${
+                    errors.address ? 'border-red-500' : 'border-[#E8D7B7] focus:border-[#3A2214]'
+                  }`}
+                />
+                {errors.address && <p className="text-red-600 text-xs mt-1">{errors.address}</p>}
+              </div>
+
+              {/* Referência */}
+              <div>
+                <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] block mb-1.5">
+                  Ponto de Referência <span className="text-[#8B5E3C]/60">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="Ex: Próximo à praça, portão preto..."
+                  className="w-full px-4 py-3 rounded-xl border border-[#E8D7B7] bg-[#F7EEDC] text-[#3A2214] text-sm focus:border-[#3A2214] focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Observações */}
+          <div>
+            <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] block mb-1.5">
+              Observações <span className="text-[#8B5E3C]/60">(opcional)</span>
+            </label>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Algum recado especial ou detalhe?"
+              className="w-full px-4 py-3 rounded-xl border border-[#E8D7B7] bg-[#F7EEDC] text-[#3A2214] text-sm focus:border-[#3A2214] focus:outline-none resize-none"
+            />
+          </div>
+
+          {/* Resumo */}
+          <div className="p-4 rounded-xl bg-[#E8D7B7]/40 border border-[#D4AF7C]/30 space-y-2.5">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-[#8B5E3C] block">
+              Resumo do Pedido
+            </span>
+            <div className="space-y-1.5 text-xs text-[#3A2214]">
+              {items.map((it) => (
+                <div key={it.id} className="flex justify-between gap-2">
+                  <span className="leading-snug">
+                    {it.quantity}x {it.productName} ({it.optionName})
+                  </span>
+                  <span className="font-semibold shrink-0">{formatBRL(it.price * it.quantity)}</span>
+                </div>
+              ))}
+            </div>
+            {appliedCoupon && (
+              <div className="flex justify-between text-xs text-emerald-800 font-semibold pt-1 border-t border-[#D4AF7C]/20">
+                <span>Cupom ({appliedCoupon.code})</span>
+                <span>- {formatBRL(couponDiscount)}</span>
+              </div>
+            )}
+            <div className="border-t border-[#D4AF7C]/30 pt-2 flex justify-between items-baseline">
+              <span className="text-xs uppercase font-bold tracking-wider text-[#8B5E3C]">Total</span>
+              <span className="font-serif text-xl font-bold text-[#3A2214]">{formatBRL(finalTotal)}</span>
+            </div>
+            <p className="text-[11px] text-[#8B5E3C] leading-snug">
+              {deliveryType === 'entrega' && hasFreeDelivery
+                ? `✨ Entrega gratuita (a partir de ${storeInfo.freeDeliveryMinUnits} unidades).`
+                : deliveryType === 'entrega'
+                ? '🛵 Taxa de entrega a combinar pelo WhatsApp.'
+                : '🏬 Retirada combinada pelo WhatsApp.'}
+            </p>
+          </div>
+
+          {/* Aviso */}
+          <p className="text-[11px] text-[#3A2214]/70 leading-relaxed text-center">
+            O <strong>WhatsApp</strong> será aberto com a mensagem pronta. O pedido só é confirmado quando você enviar a mensagem.
+          </p>
+
+          {/* Botão WhatsApp */}
+          <button
+            type="button"
+            onClick={handleSendWhatsApp}
+            className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-[#3A2214] text-[#F7EEDC] py-4 rounded-full text-[11px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.18em] font-semibold hover:bg-[#8B5E3C] transition-all shadow-lg active:scale-[0.98] touch-manipulation"
+          >
+            <MessageCircle size={17} className="text-[#D4AF7C] shrink-0" />
+            <span>Enviar Pedido pelo WhatsApp</span>
           </button>
         </div>
       </div>
-    </header>
-  );
-}
-
-function Quantity({ quantity, onDecrease, onIncrease, testId }: { quantity: number; onDecrease: () => void; onIncrease: () => void; testId: string }) {
-  return (
-    <div className="flex h-9 items-center rounded-full border border-[hsl(34_24%_76%)] bg-[hsl(35_43%_94%)]" data-testid={`quantity-${testId}`}>
-      <button className="flex h-full w-9 items-center justify-center rounded-l-full transition-colors hover:bg-[hsl(34_24%_87%)] disabled:opacity-35" onClick={onDecrease} disabled={quantity <= 1} aria-label="Diminuir quantidade" data-testid={`button-decrease-${testId}`}><Minus size={13} /></button>
-      <span className="w-5 text-center text-xs font-semibold" data-testid={`text-quantity-${testId}`}>{quantity}</span>
-      <button className="flex h-full w-9 items-center justify-center rounded-r-full transition-colors hover:bg-[hsl(34_24%_87%)]" onClick={onIncrease} aria-label="Aumentar quantidade" data-testid={`button-increase-${testId}`}><Plus size={13} /></button>
     </div>
   );
 }
-
-function ProductCard({ product, onAdd }: { product: Product; onAdd: (product: Product) => void }) {
-  return (
-    <article className="group relative" data-testid={`card-product-${product.id}`}>
-      <div className="relative mb-5 aspect-[.88] overflow-hidden rounded-[2px] bg-[hsl(34_24%_87%)]">
-        <img src={product.image} alt={`Cookie ${product.name} da Cookies & Cookies`} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" />
-        {product.tag && <span className="absolute left-4 top-4 rounded-full bg-[hsl(39_51%_71%)] px-3 py-1 text-[10px] font-bold uppercase tracking-[.13em] chocolate-text">{product.tag}</span>}
-        <button onClick={() => onAdd(product)} className="absolute bottom-4 right-4 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full wine-bg text-[hsl(35_43%_94%)] opacity-0 shadow-lg transition duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:scale-105" aria-label={`Adicionar ${product.name}`} data-testid={`button-add-${product.id}`}><Plus size={19} /></button>
-      </div>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-display text-[21px] font-semibold leading-tight">{product.name}</h3>
-          <p className="mt-2 max-w-[240px] text-[13px] leading-relaxed text-[hsl(345_18%_42%)]">{product.descriptor}</p>
-        </div>
-        <span className="whitespace-nowrap text-sm font-bold wine-text">{money(product.price)}</span>
-      </div>
-      <button onClick={() => onAdd(product)} className="mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] wine-text transition-all hover:gap-3" data-testid={`button-order-${product.id}`}>Adicionar à sacola <ArrowRight size={14} /></button>
-    </article>
-  );
-}
-
-function CartDrawer({ items, open, onClose, onUpdate, onCheckout }: { items: CartItem[]; open: boolean; onClose: () => void; onUpdate: (id: string, amount: number) => void; onCheckout: () => void }) {
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  return open ? (
-    <div className="fixed inset-0 z-50">
-      <button className="absolute inset-0 cursor-default bg-[hsl(345_38%_17%/.46)]" onClick={onClose} aria-label="Fechar sacola" data-testid="button-close-bag-overlay" />
-      <aside className="cart-enter absolute right-0 top-0 flex h-full w-full max-w-[450px] flex-col bg-[hsl(35_43%_94%)] shadow-2xl" aria-label="Sua sacola">
-        <div className="flex items-center justify-between border-b border-[hsl(34_24%_82%)] px-6 py-6">
-          <div><p className="text-[10px] font-bold uppercase tracking-[.18em] wine-text">Seu pedido</p><h2 className="mt-1 font-display text-3xl">A sua sacola</h2></div>
-          <button onClick={onClose} aria-label="Fechar sacola" data-testid="button-close-bag"><X size={22} /></button>
-        </div>
-        {items.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center px-10 text-center">
-            <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full caramel-bg"><ShoppingBag size={29} className="wine-text" strokeWidth={1.3} /></div>
-            <h3 className="font-display text-2xl">Ainda está vazia.</h3>
-            <p className="mt-3 max-w-[260px] text-sm leading-relaxed text-[hsl(345_18%_42%)]">Uma sacola vazia é só uma desculpa para escolher o primeiro cookie.</p>
-            <button onClick={onClose} className="mt-7 rounded-full wine-bg px-6 py-3 text-[11px] font-bold uppercase tracking-[.14em] text-[hsl(35_43%_94%)]" data-testid="button-browse-cookies">Escolher cookies</button>
-          </div>
-        ) : (
-          <>
-            <div className="flex-1 overflow-y-auto px-6 py-5">
-              <div className="mb-5 flex items-center gap-2 text-xs text-[hsl(345_18%_42%)]"><Sparkles size={14} className="wine-text" /> Preparados fresquinhos para você.</div>
-              <div className="space-y-5">
-                {items.map((item) => (
-                  <div className="flex gap-4" key={item.id} data-testid={`row-cart-${item.id}`}>
-                    <img src={item.image} alt="" className="h-[86px] w-[74px] rounded-sm object-cover" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex justify-between gap-3"><h3 className="font-display text-lg leading-tight">{item.name}</h3><button onClick={() => onUpdate(item.id, -item.quantity)} className="text-[10px] uppercase tracking-wider text-[hsl(345_18%_42%)] hover:wine-text" data-testid={`button-remove-${item.id}`}>Remover</button></div>
-                      <p className="mt-1 text-xs text-[hsl(345_18%_42%)]">{money(item.price)} cada</p>
-                      <div className="mt-3 flex items-center justify-between"><Quantity quantity={item.quantity} onDecrease={() => onUpdate(item.id, -1)} onIncrease={() => onUpdate(item.id, 1)} testId={`cart-${item.id}`} /><span className="text-sm font-bold">{money(item.price * item.quantity)}</span></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="border-t border-[hsl(34_24%_82%)] px-6 py-6">
-              <div className="mb-4 flex justify-between text-sm"><span>Subtotal</span><strong data-testid="text-cart-total">{money(total)}</strong></div>
-              <p className="mb-5 flex items-center gap-2 text-xs text-[hsl(345_18%_42%)]"><Truck size={14} /> Frete calculado no próximo passo.</p>
-              <button onClick={onCheckout} className="flex w-full items-center justify-center gap-3 rounded-full wine-bg py-4 text-[11px] font-bold uppercase tracking-[.16em] text-[hsl(35_43%_94%)] transition-transform hover:-translate-y-0.5" data-testid="button-go-checkout">Continuar pedido <ArrowRight size={15} /></button>
-            </div>
-          </>
-        )}
-      </aside>
-    </div>
-  ) : null;
-}
-
-function Checkout({ items, onClose, onDone }: { items: CartItem[]; onClose: () => void; onDone: () => void }) {
-  const [step, setStep] = useState<'details' | 'done'>('details');
-  const [mode, setMode] = useState<'delivery' | 'pickup'>('delivery');
-  const [cep, setCep] = useState('');
-  const [form, setForm] = useState({ name: '', phone: '', address: '', number: '', email: '' });
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const change = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
-  const valid = form.name && form.phone && form.email && (mode === 'pickup' || (form.address && form.number && cep.length >= 8));
-  if (step === 'done') return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[hsl(345_38%_17%/.55)] p-4">
-      <div className="modal-enter w-full max-w-[490px] rounded-sm bg-[hsl(35_43%_94%)] p-8 text-center sm:p-12">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full caramel-bg wine-text"><Check size={28} /></div>
-        <p className="mt-7 text-[10px] font-bold uppercase tracking-[.2em] wine-text">Pedido recebido</p>
-        <h2 className="mt-2 font-display text-4xl">Já estamos assando.</h2>
-        <p className="mx-auto mt-4 max-w-[330px] text-sm leading-relaxed text-[hsl(345_18%_42%)]">Obrigada, {form.name.split(' ')[0] || 'querida'}. Enviamos os próximos detalhes para o seu e-mail.</p>
-        <div className="my-7 border-y border-[hsl(34_24%_82%)] py-4 text-left text-sm"><div className="flex justify-between"><span>Forma de receber</span><strong>{mode === 'delivery' ? 'Delivery' : 'Retirada no local'}</strong></div><div className="mt-2 flex justify-between"><span>Total</span><strong>{money(total)}</strong></div></div>
-        <button onClick={onDone} className="rounded-full wine-bg px-7 py-3 text-[11px] font-bold uppercase tracking-[.15em] text-[hsl(35_43%_94%)]" data-testid="button-finish-order">Voltar para a loja</button>
-      </div>
-    </div>
-  );
-  return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-[hsl(35_43%_94%)]">
-      <div className="mx-auto min-h-full max-w-[1100px] px-5 py-6 sm:px-8 sm:py-10">
-        <div className="flex items-center justify-between border-b border-[hsl(34_24%_82%)] pb-6"><Logo /><button onClick={onClose} className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em]" data-testid="button-close-checkout">Voltar à sacola <X size={18} /></button></div>
-        <div className="grid gap-10 py-9 lg:grid-cols-[1fr_360px]">
-          <main>
-            <div className="mb-9 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[.17em]"><span className="wine-text">01. Seus dados</span><span className="h-px w-10 bg-[hsl(34_24%_76%)]" /><span className="text-[hsl(345_18%_42%)]">02. Confirmação</span></div>
-            <h1 className="font-display text-4xl sm:text-5xl">Quase na hora do primeiro mordisco.</h1>
-            <p className="mt-3 text-sm text-[hsl(345_18%_42%)]">Preencha seus dados. Sem cadastro, sem complicação.</p>
-            <div className="mt-9">
-              <label className="text-[11px] font-bold uppercase tracking-wider">Como você quer receber?</label>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <button onClick={() => setMode('delivery')} className={`flex items-start gap-3 rounded-sm border p-4 text-left transition-colors ${mode === 'delivery' ? 'border-[hsl(346_48%_26%)] bg-[hsl(346_48%_26%/.06)]' : 'border-[hsl(34_24%_82%)]'}`} data-testid="button-select-delivery"><Truck size={19} className="mt-0.5 wine-text" /><span><strong className="block text-sm">Delivery</strong><small className="mt-1 block text-xs text-[hsl(345_18%_42%)]">Receba em casa, quentinho.</small></span></button>
-                <button onClick={() => setMode('pickup')} className={`flex items-start gap-3 rounded-sm border p-4 text-left transition-colors ${mode === 'pickup' ? 'border-[hsl(346_48%_26%)] bg-[hsl(346_48%_26%/.06)]' : 'border-[hsl(34_24%_82%)]'}`} data-testid="button-select-pickup"><Store size={19} className="mt-0.5 wine-text" /><span><strong className="block text-sm">Retirada no local</strong><small className="mt-1 block text-xs text-[hsl(345_18%_42%)]">Rua Harmonia, 427 · Vila Madalena.</small></span></button>
-              </div>
-            </div>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <Field label="Seu nome" value={form.name} onChange={(value) => change('name', value)} placeholder="Como podemos te chamar?" testId="input-name" />
-              <Field label="WhatsApp" value={form.phone} onChange={(value) => change('phone', value)} placeholder="(11) 99999-0000" testId="input-phone" />
-              <Field label="E-mail" value={form.email} onChange={(value) => change('email', value)} placeholder="voce@email.com" testId="input-email" type="email" />
-              {mode === 'delivery' && <><div className="sm:col-span-2"><Field label="CEP" value={cep} onChange={setCep} placeholder="00000-000" testId="input-checkout-cep" /></div><Field label="Endereço" value={form.address} onChange={(value) => change('address', value)} placeholder="Rua, avenida..." testId="input-address" /><Field label="Número" value={form.number} onChange={(value) => change('number', value)} placeholder="000" testId="input-number" /></>}
-            </div>
-            <button disabled={!valid} onClick={() => setStep('done')} className="mt-8 flex w-full items-center justify-center gap-3 rounded-full wine-bg py-4 text-[11px] font-bold uppercase tracking-[.16em] text-[hsl(35_43%_94%)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:px-10" data-testid="button-submit-order">Confirmar pedido <ArrowRight size={15} /></button>
-          </main>
-          <aside className="h-fit rounded-sm bg-[hsl(346_48%_26%)] p-6 text-[hsl(35_43%_94%)] lg:sticky lg:top-6">
-            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(39_51%_71%)]">Resumo da sacola</p>
-            <div className="mt-5 space-y-4">{items.map((item) => <div className="flex justify-between gap-4 text-sm" key={item.id}><span>{item.quantity} × {item.name}</span><span className="whitespace-nowrap">{money(item.price * item.quantity)}</span></div>)}</div>
-            <div className="my-6 border-t border-[hsl(35_43%_94%/.2)]" /><div className="flex justify-between text-base"><span>Total</span><strong className="text-[hsl(39_51%_71%)]">{money(total)}</strong></div>
-            <p className="mt-6 flex gap-2 text-xs leading-relaxed text-[hsl(35_20%_78%)]"><CircleHelp size={15} className="mt-0.5 shrink-0" /> Pagamento combinado na entrega ou retirada.</p>
-          </aside>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, placeholder, testId, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; testId: string; type?: string }) {
-  return <label className="block"><span className="text-[11px] font-bold uppercase tracking-wider">{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="mt-2 h-12 w-full rounded-sm border border-[hsl(34_24%_76%)] bg-[hsl(36_45%_97%)] px-4 text-sm placeholder:text-[hsl(345_18%_58%)] focus:border-[hsl(346_48%_26%)] focus:outline-none" data-testid={testId} /></label>;
-}
-
-function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
-  if (!open) return null;
-  return <div className="fixed inset-0 z-40 bg-[hsl(35_43%_94%)] md:hidden"><div className="flex h-8 items-center justify-center wine-bg text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(35_43%_94%)]">A loja dos cookies de verdade</div><div className="flex items-center justify-between px-5 py-7"><Logo /><button onClick={onClose} aria-label="Fechar menu" data-testid="button-close-menu"><X size={23} /></button></div><nav className="flex flex-col px-5" aria-label="Menu mobile">{[['#colecao', 'Coleção'], ['#monte-sua-caixa', 'Monte sua caixa'], ['#nossa-historia', 'Nossa história'], ['#encontre', 'Onde encontrar']].map(([href, label]) => <a key={href} href={href} onClick={onClose} className="border-b border-[hsl(34_24%_82%)] py-5 font-display text-3xl" data-testid={`mobile-link-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}<ArrowRight className="ml-2 inline-block" size={22} /></a>)}</nav><div className="absolute bottom-8 left-5 right-5 border-t border-[hsl(34_24%_82%)] pt-5 text-xs text-[hsl(345_18%_42%)]">Vila Madalena, São Paulo · segunda a sábado</div></div>;
-}
-
-function Home() {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [bagOpen, setBagOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [cep, setCep] = useState('');
-  const [estimate, setEstimate] = useState('');
-  const [boxSize, setBoxSize] = useState(8);
-   const [boxFlavors, setBoxFlavors] = useState<Record<string, number>>({ 'red-velvet': 3, 'alpino-black': 3, 'kinder-bueno': 2 });
-  const [toast, setToast] = useState('');
-  const bagCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  const boxCount = Object.values(boxFlavors).reduce((sum, value) => sum + value, 0);
-  const boxPrice = boxSize * 15;
-  const addToBag = (product: Product, quantity = 1, custom = false) => {
-    setItems((current) => {
-      const existing = current.find((item) => item.id === product.id);
-      if (existing) return current.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item);
-      return [...current, { ...product, quantity, custom }];
-    });
-    setToast(`${product.name} foi para a sacola`);
-    window.setTimeout(() => setToast(''), 2400);
-  };
-  const updateItem = (id: string, amount: number) => setItems((current) => current.map((item) => item.id === id ? { ...item, quantity: item.quantity + amount } : item).filter((item) => item.quantity > 0));
-  const toggleFlavor = (id: string, amount: number) => setBoxFlavors((current) => {
-    const next = Math.max(0, (current[id] || 0) + amount);
-    if (amount > 0 && boxCount >= boxSize) return current;
-    return { ...current, [id]: next };
-  });
-  const addBox = () => {
-    const detail = flavors.filter((flavor) => boxFlavors[flavor.id]).map((flavor) => `${boxFlavors[flavor.id]} ${flavor.short}`).join(', ');
-    addToBag({ id: `caixa-${boxSize}`, name: `Caixa com ${boxSize} cookies`, descriptor: detail, price: boxPrice, image: alpinoBlackPhoto, tag: 'Montada por você' }, 1, true);
-  };
-  const estimateCep = () => {
-    if (cep.replace(/\D/g, '').length >= 8) setEstimate('Chega hoje, entre 14h e 19h. A gente avisa quando sair do forno.');
-    else setEstimate('Digite um CEP válido com 8 números.');
-  };
-  return (
-    <div id="top" className="min-h-[100dvh] overflow-x-hidden">
-      <Header bagCount={bagCount} onBag={() => setBagOpen(true)} onMenu={() => setMenuOpen(true)} />
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <main>
-        <section className="mx-auto grid max-w-[1240px] gap-6 px-5 pb-16 pt-7 sm:pt-10 lg:grid-cols-[1.02fr_.98fr] lg:gap-8 lg:px-8 lg:pb-24">
-          <div className="wine-bg relative flex min-h-[560px] flex-col justify-between overflow-hidden px-7 py-8 text-[hsl(35_43%_94%)] sm:px-12 sm:py-12 lg:min-h-[650px]">
-            <div className="absolute -right-28 -top-28 h-[330px] w-[330px] rounded-full border border-[hsl(39_51%_71%/.3)]" /><div className="absolute -bottom-36 -left-32 h-[430px] w-[430px] rounded-full border border-[hsl(39_51%_71%/.2)]" />
-             <div className="relative fade-up"><h1 className="max-w-[580px] font-display text-[clamp(3.5rem,8vw,7.1rem)] font-semibold leading-[.89] tracking-[-.06em]">O cookie que começou tudo<span className="text-[hsl(39_51%_71%)]">.</span></h1></div>
-            <div className="relative mt-12 flex items-end justify-between gap-8 fade-up fade-up-delay-2"><p className="max-w-[250px] text-sm leading-relaxed text-[hsl(35_20%_80%)]">Grandes, macios no centro, crocantes nas bordas. Feitos à mão e assados em pequenos lotes.</p><a href="#colecao" className="group flex h-20 w-20 shrink-0 items-center justify-center rounded-full caramel-bg text-center text-[10px] font-bold uppercase leading-tight tracking-wider chocolate-text transition-transform hover:rotate-6" data-testid="link-hero-order">Pedir<br />agora <ArrowRight size={15} className="ml-1 transition-transform group-hover:translate-x-1" /></a></div>
-          </div>
-           <div className="relative min-h-[560px] overflow-hidden bg-[hsl(34_24%_87%)] lg:min-h-[650px]"><img src={redVelvetPhoto} alt="Cookie Red Velvet artesanal com chocolate branco" className="h-full w-full object-cover" /><div className="absolute bottom-6 left-6 right-6 flex items-center justify-between border-t border-[hsl(35_43%_94%/.6)] pt-4 text-[hsl(35_43%_94%)]"><span className="text-[10px] font-bold uppercase tracking-[.19em]">Red Velvet · R$ 15</span><span className="font-display text-lg italic">feito com carinho</span></div></div>
-        </section>
-
-        <section id="colecao" className="mx-auto max-w-[1240px] scroll-mt-24 px-5 py-16 lg:px-8 lg:py-24">
-          <div className="mb-12 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] wine-text">A vitrine</p><h2 className="mt-3 font-display text-4xl leading-none sm:text-5xl">Escolha seus cookies</h2></div><p className="max-w-[270px] text-sm leading-relaxed text-[hsl(345_18%_42%)]">Cada receita tem seu momento. A única regra é não deixar para depois.</p></div>
-           <div className="grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">{products.map((product) => <ProductCard key={product.id} product={product} onAdd={addToBag} />)}</div>
-          <div className="mt-16 flex justify-center"><a href="#monte-sua-caixa" className="flex items-center gap-3 border-b border-[hsl(346_48%_26%)] pb-2 text-[11px] font-bold uppercase tracking-[.16em] wine-text hover:gap-4" data-testid="link-build-box">Prefere uma seleção? Monte sua caixa <ArrowRight size={15} /></a></div>
-        </section>
-
-        <section id="nossa-historia" className="wine-bg scroll-mt-24 text-[hsl(35_43%_94%)]">
-          <div className="mx-auto grid max-w-[1240px] items-stretch lg:grid-cols-[.95fr_1.05fr]">
-            <div className="flex flex-col justify-center px-5 py-16 sm:px-12 lg:py-24 lg:pr-20"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(39_51%_71%)]">Nossa história</p><h2 className="mt-5 font-display text-5xl leading-[.95] sm:text-6xl">Cookies que merecem um close.</h2><p className="mt-7 max-w-[420px] text-sm leading-[1.8] text-[hsl(35_20%_80%)]">Começou com uma fornada na cozinha de casa e uma pergunta simples: e se o cookie fosse o evento principal? Hoje, continuamos fazendo do mesmo jeito — massa descansada, chocolate de verdade e atenção a cada fornada.</p><div className="mt-9 flex items-center gap-4 text-xs"><span className="flex h-10 w-10 items-center justify-center rounded-full border border-[hsl(39_51%_71%/.6)]"><Heart size={16} className="text-[hsl(39_51%_71%)]" /></span> <span>feito para compartilhar <em className="font-display text-base"> (ou não)</em></span></div></div>
-             <div className="relative min-h-[420px] overflow-hidden lg:min-h-[600px]"><img src={kinderBuenoPhoto} alt="Cookie Kinder Bueno artesanal com chocolate e avelã" className="h-full w-full object-cover" /><div className="absolute right-5 top-5 flex h-20 w-20 rotate-12 flex-col items-center justify-center rounded-full caramel-bg text-center text-[9px] font-bold uppercase leading-tight tracking-wider chocolate-text"><img src={ccLogo} alt="" className="h-9 w-9 object-contain" /><span>desde<br />2021</span></div></div>
-          </div>
-        </section>
-
-        <section id="monte-sua-caixa" className="scroll-mt-24 px-5 py-16 sm:px-8 lg:py-24">
-          <div className="mx-auto max-w-[1240px]"><div className="mb-12 max-w-[570px]"><p className="text-[10px] font-bold uppercase tracking-[.2em] wine-text">Para dividir, presentear ou esconder</p><h2 className="mt-3 font-display text-4xl leading-none sm:text-5xl">Monte sua caixa</h2><p className="mt-4 text-sm leading-relaxed text-[hsl(345_18%_42%)]">Você escolhe o tamanho, a gente cuida do laço. Misture os sabores até ficar com a sua cara.</p></div>
-            <div className="grid border-y border-[hsl(34_24%_82%)] lg:grid-cols-[.8fr_1.2fr]">
-              <div className="stripe-panel relative min-h-[380px] overflow-hidden p-7 sm:p-12"><div className="absolute inset-5 border border-[hsl(35_43%_94%/.55)]" /><div className="relative flex h-full flex-col justify-between"><div className="flex justify-between"><span className="flex items-center gap-2 rounded-full bg-[hsl(35_43%_94%)] px-3 py-1 text-[9px] font-bold uppercase tracking-widest wine-text"><img src={ccLogo} alt="" className="h-5 w-5 object-contain" /> box</span><Gift className="text-[hsl(35_43%_94%)]" size={21} /></div><div className="relative mx-auto mt-16 w-[220px] rotate-[-4deg] bg-[hsl(35_43%_94%)] p-5 text-center shadow-xl"><div className="border border-[hsl(346_48%_26%)] p-4"><Logo /><p className="mt-4 text-[9px] font-semibold uppercase tracking-wider wine-text">Feito para compartilhar</p><div className="mx-auto mt-6 flex h-14 w-14 items-center justify-center rounded-full caramel-bg"><img src={ccLogo} alt="Logo Cookies & Cookies" className="h-12 w-12 object-contain" /></div></div></div><p className="relative mt-8 text-center font-display text-lg text-[hsl(35_43%_94%)]">uma caixa, muitos motivos</p></div></div>
-               <div className="bg-[hsl(36_45%_97%)] p-7 sm:p-12"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] wine-text">1. Tamanho</p><p className="mt-1 text-xs text-[hsl(345_18%_42%)]">R$ 15 por cookie, do seu jeito.</p></div><span className="font-display text-2xl wine-text">{money(boxPrice)}</span></div><div className="mt-5 grid grid-cols-3 gap-2">{[4, 8, 12].map((size) => <button key={size} onClick={() => { const first = Math.ceil(size / 3); const second = Math.floor(size / 3); setBoxSize(size); setBoxFlavors({ 'red-velvet': first, 'alpino-black': second, 'kinder-bueno': size - first - second }); }} className={`border py-3 text-sm transition-colors ${boxSize === size ? 'border-[hsl(346_48%_26%)] wine-bg text-[hsl(35_43%_94%)]' : 'border-[hsl(34_24%_82%)] hover:border-[hsl(346_48%_26%)]'}`} data-testid={`button-box-size-${size}`}>{size} cookies</button>)}</div><div className="mt-10"><p className="text-[10px] font-bold uppercase tracking-[.16em] wine-text">2. Seus sabores <span className="ml-2 font-normal tracking-normal text-[hsl(345_18%_42%)]">({boxCount}/{boxSize})</span></p><div className="mt-4 grid gap-3">{flavors.map((flavor) => <div className="flex items-center justify-between border-b border-[hsl(34_24%_82%)] py-3" key={flavor.id}><span className="text-sm">{flavor.label}</span><Quantity quantity={boxFlavors[flavor.id] || 0} onDecrease={() => toggleFlavor(flavor.id, -1)} onIncrease={() => toggleFlavor(flavor.id, 1)} testId={`box-${flavor.id}`} /></div>)}</div></div><button disabled={boxCount !== boxSize} onClick={addBox} className="mt-8 flex w-full items-center justify-center gap-3 rounded-full wine-bg py-4 text-[11px] font-bold uppercase tracking-[.16em] text-[hsl(35_43%_94%)] transition-opacity disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-add-box">Adicionar caixa à sacola <ArrowRight size={15} /></button></div>
-            </div>
-          </div>
-        </section>
-
-        <section className="paper-texture border-y border-[hsl(34_24%_82%)] bg-[hsl(39_51%_71%/.35)] px-5 py-14 sm:px-8 lg:py-20">
-          <div className="mx-auto grid max-w-[1080px] gap-10 md:grid-cols-3 md:gap-5">
-            <div className="flex gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full wine-bg text-[hsl(39_51%_71%)]"><Clock3 size={19} /></span><div><h3 className="font-display text-xl">Assado no dia</h3><p className="mt-2 text-sm leading-relaxed text-[hsl(345_18%_42%)]">A massa descansa. O forno espera. Você recebe no ponto certo.</p></div></div>
-            <div className="flex gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full wine-bg text-[hsl(39_51%_71%)]"><Truck size={19} /></span><div><h3 className="font-display text-xl">Delivery com cuidado</h3><p className="mt-2 text-sm leading-relaxed text-[hsl(345_18%_42%)]">Levamos nossos cookies pela cidade em embalagens que chegam inteiras.</p></div></div>
-            <div className="flex gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full wine-bg text-[hsl(39_51%_71%)]"><Sparkles size={19} /></span><div><h3 className="font-display text-xl">Um presente pronto</h3><p className="mt-2 text-sm leading-relaxed text-[hsl(345_18%_42%)]">A embalagem já faz parte da experiência. Só falta escolher para quem.</p></div></div>
-          </div>
-        </section>
-
-        <section id="encontre" className="mx-auto grid max-w-[1240px] scroll-mt-24 gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[.9fr_1.1fr] lg:items-center lg:py-24">
-          <div><p className="text-[10px] font-bold uppercase tracking-[.2em] wine-text">Chegue mais perto</p><h2 className="mt-3 font-display text-4xl leading-none sm:text-5xl">Delivery ou retirada?</h2><p className="mt-5 max-w-[390px] text-sm leading-relaxed text-[hsl(345_18%_42%)]">Estamos na Vila Madalena, mas nossos cookies podem encontrar você em boa parte de São Paulo.</p><div className="mt-8 flex flex-wrap gap-3"><span className="flex items-center gap-2 rounded-full border border-[hsl(34_24%_76%)] px-4 py-2 text-xs"><MapPin size={14} className="wine-text" /> Rua Harmonia, 427</span><span className="flex items-center gap-2 rounded-full border border-[hsl(34_24%_76%)] px-4 py-2 text-xs"><Store size={14} className="wine-text" /> Seg–Sáb, 10h–19h</span></div></div>
-          <div className="wine-bg p-7 text-[hsl(35_43%_94%)] sm:p-10"><div className="flex items-start justify-between gap-6"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(39_51%_71%)]">Consulte seu CEP</p><h3 className="mt-3 font-display text-3xl">Quando chega o carinho?</h3></div><Truck size={24} className="text-[hsl(39_51%_71%)]" /></div><div className="mt-7 flex gap-2"><input value={cep} onChange={(event) => setCep(event.target.value)} inputMode="numeric" placeholder="00000-000" className="h-12 min-w-0 flex-1 rounded-sm border border-[hsl(35_43%_94%/.3)] bg-transparent px-4 text-sm text-[hsl(35_43%_94%)] placeholder:text-[hsl(35_20%_72%)] focus:border-[hsl(39_51%_71%)] focus:outline-none" aria-label="Digite seu CEP" data-testid="input-cep" /><button onClick={estimateCep} className="h-12 rounded-sm caramel-bg px-5 text-[11px] font-bold uppercase tracking-wider chocolate-text transition-transform hover:-translate-y-0.5" data-testid="button-estimate-cep">Calcular</button></div>{estimate && <p className={`mt-4 flex items-start gap-2 text-xs leading-relaxed ${estimate.startsWith('Digite') ? 'text-[hsl(39_51%_71%)]' : 'text-[hsl(35_20%_80%)]'}`} data-testid="status-cep-estimate"><Check size={15} className="mt-0.5 shrink-0" /> {estimate}</p>}</div>
-        </section>
-
-        <section className="wine-bg px-5 py-20 text-center text-[hsl(35_43%_94%)] sm:px-8 lg:py-28"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(39_51%_71%)]">Atenção: pode causar vontade</p><h2 className="mx-auto mt-5 max-w-[760px] font-display text-5xl leading-[.92] sm:text-7xl">Um cookie bom não precisa de legenda.</h2><p className="mx-auto mt-7 max-w-[410px] text-sm leading-relaxed text-[hsl(35_20%_80%)]">Mas uma foto bonita ajuda. Marque <span className="text-[hsl(39_51%_71%)]">@cookiesandcookies</span> no seu próximo close.</p><a href="https://www.instagram.com/" target="_blank" rel="noreferrer" className="mx-auto mt-8 flex w-fit items-center gap-3 rounded-full border border-[hsl(39_51%_71%/.7)] px-6 py-3 text-[11px] font-bold uppercase tracking-[.16em] text-[hsl(39_51%_71%)] transition-colors hover:bg-[hsl(39_51%_71%)] hover:text-[hsl(345_38%_17%)]" data-testid="link-instagram"><Instagram size={16} /> Ver no Instagram</a></section>
-      </main>
-      <footer className="bg-[hsl(345_38%_17%)] px-5 py-10 text-[hsl(35_43%_94%)] sm:px-8"><div className="mx-auto flex max-w-[1240px] flex-col gap-8 sm:flex-row sm:items-end sm:justify-between"><div><Logo light /><p className="mt-4 max-w-[220px] text-xs leading-relaxed text-[hsl(35_20%_72%)]">Cookies grandes, feitos à mão e um pouco difíceis de dividir.</p></div><div className="flex flex-wrap gap-x-6 gap-y-3 text-[10px] font-bold uppercase tracking-[.14em] text-[hsl(35_20%_72%)]"><a href="#colecao" className="hover:text-[hsl(39_51%_71%)]" data-testid="footer-link-collection">Coleção</a><a href="#monte-sua-caixa" className="hover:text-[hsl(39_51%_71%)]" data-testid="footer-link-box">Monte sua caixa</a><a href="#encontre" className="hover:text-[hsl(39_51%_71%)]" data-testid="footer-link-location">Contato</a></div><p className="text-[10px] text-[hsl(35_20%_72%)]">© 2024 Cookies & Cookies</p></div></footer>
-      {toast && <div className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full wine-bg px-5 py-3 text-xs font-semibold text-[hsl(35_43%_94%)] shadow-xl" role="status" data-testid="status-add-to-cart"><span className="flex h-5 w-5 items-center justify-center rounded-full caramel-bg chocolate-text"><Check size={12} /></span>{toast}<button onClick={() => setBagOpen(true)} className="ml-1 underline underline-offset-2" data-testid="button-view-bag-toast">Ver sacola</button></div>}
-      <CartDrawer items={items} open={bagOpen} onClose={() => setBagOpen(false)} onUpdate={updateItem} onCheckout={() => { setBagOpen(false); setCheckoutOpen(true); }} />
-      {checkoutOpen && <Checkout items={items} onClose={() => setCheckoutOpen(false)} onDone={() => { setItems([]); setCheckoutOpen(false); }} />}
-    </div>
-  );
-}
-
-function Router() {
-  return <RoutedErrorBoundary><Switch><Route path="/" component={Home} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>;
-}
-
-function RoutedErrorBoundary({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
-  return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
-}
-
-function App() {
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
-}
-
-export default App;
