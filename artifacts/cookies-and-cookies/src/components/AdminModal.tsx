@@ -385,10 +385,10 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
       <div className="fixed inset-0 bg-[#3A2214]/65 backdrop-blur-xs" onClick={onClose} />
 
-      <div className="modal-enter relative w-full max-w-4xl bg-[#F7EEDC] rounded-2xl shadow-2xl border-2 border-[#E8D7B7] flex flex-col my-6 z-10 max-h-[92vh] overflow-hidden">
+      <div className="modal-enter relative w-full h-full min-h-screen bg-[#F7EEDC] flex flex-col z-10 overflow-hidden">
         {/* Cabeçalho do Painel */}
         <div className="p-5 sm:p-6 border-b border-[#E8D7B7] flex items-center justify-between bg-[#F7EEDC]">
           <div className="flex items-center gap-3">
