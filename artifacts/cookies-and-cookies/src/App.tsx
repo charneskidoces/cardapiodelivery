@@ -552,9 +552,9 @@ function AppContent() {
                     <button
                       type="button"
                       onClick={() => handleAddToCart(product, currentOption, currentQty, currentImage)}
-                      className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-[#E8D7B7] hover:bg-[#F7EEDC] text-[#3A2214] py-4 rounded-full text-[11px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.18em] font-bold transition-all shadow-md active:scale-[0.98] touch-manipulation"
+                      className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-[#3A2214] hover:bg-[#24130A] text-[#E8D7B7] py-4 rounded-full text-[11px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.18em] font-bold transition-all shadow-md active:scale-[0.98] touch-manipulation"
                     >
-                      <ShoppingBag size={16} className="text-[#3A2214] shrink-0" />
+                      <ShoppingBag size={16} className="text-[#E8D7B7] shrink-0" />
                       <span>Adicionar ao pedido • {formatBRL(currentSubtotal)}</span>
                     </button>
                   </div>
