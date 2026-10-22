@@ -79,11 +79,6 @@ export const INITIAL_PRODUCTS: Product[] = [
       'Uma combinação irresistível de chocolate, biscoito e leite em pó, preparada artesanalmente para proporcionar uma experiência deliciosa a cada pedaço.',
     category: 'Palha Italiana',
     image: '/images/palha-real-2.jpg',
-    images: [
-      '/images/palha-real-2.jpg',
-      '/images/palha-real-1.jpg',
-      '/images/palha-real-3.jpg',
-    ],
     available: true,
     ingredientsBadge: 'Chocolate nobre & Leite Ninho',
     options: [

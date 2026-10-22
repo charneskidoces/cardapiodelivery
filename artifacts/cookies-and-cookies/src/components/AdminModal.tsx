@@ -230,10 +230,12 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
     }
 
     if (editingProduct) {
-      await updateProduct({
+      const updatedProduct = {
         ...editingProduct,
         ...prodForm,
-      });
+      };
+      delete (updatedProduct as any).images;
+      await updateProduct(updatedProduct);
       showNotification(`Produto "${prodForm.name}" atualizado com sucesso!`);
     } else {
       await addProduct({

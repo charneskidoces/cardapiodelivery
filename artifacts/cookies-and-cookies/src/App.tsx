@@ -59,7 +59,6 @@ function AppContent() {
   const [couponDiscount, setCouponDiscount] = useState<number>(0);
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
-  const [selectedImages, setSelectedImages] = useState<Record<string, string>>({});
   const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
 
   const showToast = (msg: string) => {
@@ -324,7 +323,6 @@ function AppContent() {
                 product.options[0];
               const currentQty = productQuantities[product.id] || 1;
               const currentSubtotal = (currentOption?.price || 0) * currentQty;
-              const currentImage = selectedImages[product.id] || product.image;
 
               return (
                 <div
@@ -334,7 +332,7 @@ function AppContent() {
                   {/* Imagem */}
                   <div className="relative h-60 sm:h-72 md:h-80 w-full overflow-hidden bg-[#E8D7B7]">
                     <img
-                      src={currentImage}
+                      src={product.image}
                       alt={product.name}
                       className="w-full h-full object-cover object-center transition-all duration-500"
                     />
@@ -346,29 +344,6 @@ function AppContent() {
                     {product.ingredientsBadge && (
                       <div className="absolute top-3 right-3 bg-[#F7EEDC]/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-medium text-[#3A2214] border border-[#E8D7B7] shadow-xs">
                         {product.ingredientsBadge}
-                      </div>
-                    )}
-
-                    {/* Miniaturas de fotos */}
-                    {product.images && product.images.length > 1 && (
-                      <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-[#3A2214]/85 backdrop-blur-md px-2 py-1.5 rounded-full flex items-center gap-1.5 sm:gap-2 border border-[#D4AF7C]/40">
-                        {product.images.map((imgUrl, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() =>
-                              setSelectedImages((prev) => ({ ...prev, [product.id]: imgUrl }))
-                            }
-                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border-2 transition-transform ${
-                              currentImage === imgUrl
-                                ? 'border-[#D4AF7C] scale-110 shadow-sm'
-                                : 'border-transparent opacity-65 hover:opacity-100'
-                            }`}
-                            aria-label={`Ver foto ${idx + 1}`}
-                          >
-                            <img src={imgUrl} alt="" className="w-full h-full object-cover" />
-                          </button>
-                        ))}
                       </div>
                     )}
                   </div>
@@ -498,7 +473,7 @@ function AppContent() {
                     {/* Botão Adicionar */}
                     <button
                       type="button"
-                      onClick={() => handleAddToCart(product, currentOption, currentQty, currentImage)}
+                      onClick={() => handleAddToCart(product, currentOption, currentQty, product.image)}
                       className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-[#3A2214] text-[#F7EEDC] py-4 rounded-full text-[11px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.18em] font-semibold hover:bg-[#8B5E3C] transition-all shadow-md active:scale-[0.98] touch-manipulation"
                     >
                       <ShoppingBag size={16} className="text-[#D4AF7C] shrink-0" />
