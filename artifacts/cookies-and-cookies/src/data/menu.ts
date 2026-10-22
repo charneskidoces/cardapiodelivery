@@ -67,7 +67,7 @@ export const INITIAL_STORE_INFO: StoreInfo = {
   instagramUrl: 'https://www.instagram.com/charneski_doces/',
   freeDeliveryRule: 'Entrega grátis a partir de 2 unidades',
   freeDeliveryMinUnits: 2,
-  adminPin: 'charneski123',
+  adminPin: 'charneski321On',
 };
 
 export const INITIAL_PRODUCTS: Product[] = [

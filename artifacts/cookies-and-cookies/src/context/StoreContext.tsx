@@ -69,7 +69,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [storeInfo, setStoreInfo] = useState<StoreInfo>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.STORE_INFO);
-      return saved ? { ...INITIAL_STORE_INFO, ...JSON.parse(saved) } : INITIAL_STORE_INFO;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.adminPin === 'charneski123') {
+          parsed.adminPin = INITIAL_STORE_INFO.adminPin;
+        }
+        return { ...INITIAL_STORE_INFO, ...parsed };
+      }
+      return INITIAL_STORE_INFO;
     } catch {
       return INITIAL_STORE_INFO;
     }
