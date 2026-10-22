@@ -15,6 +15,7 @@ import {
   Store,
   Tag,
   ChevronRight,
+  ChevronLeft,
   Navigation,
   Lock,
   ExternalLink,
@@ -59,6 +60,7 @@ function AppContent() {
   const [couponDiscount, setCouponDiscount] = useState<number>(0);
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [optionImageIndices, setOptionImageIndices] = useState<Record<string, number>>({});
   const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
 
   const showToast = (msg: string) => {
@@ -324,27 +326,103 @@ function AppContent() {
               const currentQty = productQuantities[product.id] || 1;
               const currentSubtotal = (currentOption?.price || 0) * currentQty;
 
+              const currentImages: string[] =
+                currentOption?.images && currentOption.images.length > 0
+                  ? currentOption.images
+                  : product.images && product.images.length > 0
+                    ? product.images
+                    : [product.image];
+
+              const optImgKey = `${product.id}-${currentOption?.id || 'default'}`;
+              const rawIdx = optionImageIndices[optImgKey] || 0;
+              const activeIdx = Math.min(Math.max(0, rawIdx), Math.max(0, currentImages.length - 1));
+              const currentImage = currentImages[activeIdx] || product.image;
+
               return (
                 <div
                   key={product.id}
                   className="bg-[#F7EEDC] rounded-2xl border-2 border-[#E8D7B7] shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden"
                 >
-                  {/* Imagem */}
-                  <div className="relative h-60 sm:h-72 md:h-80 w-full overflow-hidden bg-[#E8D7B7]">
+                  {/* Imagem com Galeria por Apresentação */}
+                  <div className="relative h-60 sm:h-72 md:h-80 w-full overflow-hidden bg-[#E8D7B7] group">
                     <img
-                      src={product.image}
-                      alt={product.name}
+                      key={currentImage}
+                      src={currentImage}
+                      alt={`${product.name} - ${currentOption?.name || ''}`}
                       className="w-full h-full object-cover object-center transition-all duration-500"
                     />
-                    <div className="absolute top-3 left-3">
+
+                    {/* Tagline / Badges */}
+                    <div className="absolute top-3 left-3 z-10">
                       <span className="bg-[#3A2214] text-[#D4AF7C] text-[9px] sm:text-[10px] uppercase font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full tracking-wider border border-[#D4AF7C]/40 shadow-sm">
                         {product.tagline}
                       </span>
                     </div>
                     {product.ingredientsBadge && (
-                      <div className="absolute top-3 right-3 bg-[#F7EEDC]/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-medium text-[#3A2214] border border-[#E8D7B7] shadow-xs">
+                      <div className="absolute top-3 right-3 z-10 bg-[#F7EEDC]/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-medium text-[#3A2214] border border-[#E8D7B7] shadow-xs">
                         {product.ingredientsBadge}
                       </div>
+                    )}
+
+                    {/* Controles de Navegação entre fotos da apresentação selecionada */}
+                    {currentImages.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOptionImageIndices((prev) => ({
+                              ...prev,
+                              [optImgKey]: (activeIdx - 1 + currentImages.length) % currentImages.length,
+                            }));
+                          }}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#3A2214]/75 hover:bg-[#3A2214] text-[#F7EEDC] flex items-center justify-center transition-all shadow-md backdrop-blur-xs z-10 active:scale-95"
+                          aria-label="Foto anterior"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOptionImageIndices((prev) => ({
+                              ...prev,
+                              [optImgKey]: (activeIdx + 1) % currentImages.length,
+                            }));
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#3A2214]/75 hover:bg-[#3A2214] text-[#F7EEDC] flex items-center justify-center transition-all shadow-md backdrop-blur-xs z-10 active:scale-95"
+                          aria-label="Próxima foto"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+
+                        {/* Indicadores de fotos da opção */}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[#3A2214]/85 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1.5 border border-[#D4AF7C]/40 shadow-sm z-10">
+                          {currentImages.map((_, dotIdx) => (
+                            <button
+                              key={dotIdx}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOptionImageIndices((prev) => ({
+                                  ...prev,
+                                  [optImgKey]: dotIdx,
+                                }));
+                              }}
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                activeIdx === dotIdx
+                                  ? 'w-5 bg-[#D4AF7C]'
+                                  : 'w-2 bg-[#F7EEDC]/40 hover:bg-[#F7EEDC]'
+                              }`}
+                              aria-label={`Ver foto ${dotIdx + 1}`}
+                            />
+                          ))}
+                          <span className="text-[10px] text-[#F7EEDC]/80 font-bold ml-1 tracking-wider">
+                            {activeIdx + 1}/{currentImages.length}
+                          </span>
+                        </div>
+                      </>
                     )}
                   </div>
 
@@ -473,7 +551,7 @@ function AppContent() {
                     {/* Botão Adicionar */}
                     <button
                       type="button"
-                      onClick={() => handleAddToCart(product, currentOption, currentQty, product.image)}
+                      onClick={() => handleAddToCart(product, currentOption, currentQty, currentImage)}
                       className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-[#3A2214] text-[#F7EEDC] py-4 rounded-full text-[11px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.18em] font-semibold hover:bg-[#8B5E3C] transition-all shadow-md active:scale-[0.98] touch-manipulation"
                     >
                       <ShoppingBag size={16} className="text-[#D4AF7C] shrink-0" />

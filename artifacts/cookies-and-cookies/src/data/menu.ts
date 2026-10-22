@@ -4,6 +4,7 @@ export interface PresentationOption {
   description?: string;
   price: number;
   badge?: string;
+  images?: string[];
 }
 
 export interface Product {
@@ -88,6 +89,7 @@ export const INITIAL_PRODUCTS: Product[] = [
         description: 'Apresentação tradicional individual para adoçar o dia.',
         price: 10.0,
         badge: 'Mais pedida',
+        images: ['/images/palha-real-2.jpg', '/images/palha-real-1.jpg'],
       },
       {
         id: 'opcao-especial-15',
@@ -95,6 +97,7 @@ export const INITIAL_PRODUCTS: Product[] = [
         description: 'Apresentação reforçada para quem deseja uma dose extra de sabor.',
         price: 15.0,
         badge: 'Especial',
+        images: ['/images/palha-real-3.jpg', '/images/palha-real-1.jpg'],
       },
     ],
   },

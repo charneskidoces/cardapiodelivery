@@ -51,7 +51,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-      return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+      if (saved) {
+        const parsed: Product[] = JSON.parse(saved);
+        return parsed.map((prod) => ({
+          ...prod,
+          options: (prod.options || []).map((opt) => {
+            if (!opt.images || opt.images.length === 0) {
+              if (opt.id === 'opcao-padrao-10' || opt.price === 10) {
+                return { ...opt, images: ['/images/palha-real-2.jpg', '/images/palha-real-1.jpg'] };
+              }
+              if (opt.id === 'opcao-especial-15' || opt.price === 15) {
+                return { ...opt, images: ['/images/palha-real-3.jpg', '/images/palha-real-1.jpg'] };
+              }
+              return { ...opt, images: [prod.image] };
+            }
+            return opt;
+          }),
+        }));
+      }
+      return INITIAL_PRODUCTS;
     } catch {
       return INITIAL_PRODUCTS;
     }

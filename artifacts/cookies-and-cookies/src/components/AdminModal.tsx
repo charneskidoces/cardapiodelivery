@@ -74,8 +74,8 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
     available: true,
     ingredientsBadge: 'Chocolate nobre & Leite Ninho',
     options: [
-      { id: 'opt-1', name: 'Opção 1 — R$ 10,00', description: 'Tamanho tradicional', price: 10 },
-      { id: 'opt-2', name: 'Opção 2 — R$ 15,00', description: 'Porção especial', price: 15 },
+      { id: 'opt-1', name: 'Opção 1 — R$ 10,00', description: 'Tamanho tradicional', price: 10, images: [] },
+      { id: 'opt-2', name: 'Opção 2 — R$ 15,00', description: 'Porção especial', price: 15, images: [] },
     ],
   });
 
@@ -198,8 +198,8 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
       available: true,
       ingredientsBadge: 'Chocolate nobre & Leite Ninho',
       options: [
-        { id: `opt-${Date.now()}-1`, name: 'Opção 1 — R$ 10,00', description: 'Tamanho tradicional', price: 10 },
-        { id: `opt-${Date.now()}-2`, name: 'Opção 2 — R$ 15,00', description: 'Porção especial', price: 15 },
+        { id: `opt-${Date.now()}-1`, name: 'Opção 1 — R$ 10,00', description: 'Tamanho tradicional', price: 10, images: [] },
+        { id: `opt-${Date.now()}-2`, name: 'Opção 2 — R$ 15,00', description: 'Porção especial', price: 15, images: [] },
       ],
     });
     setIsProductFormOpen(true);
@@ -215,9 +215,13 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
       image: prod.image,
       available: prod.available,
       ingredientsBadge: prod.ingredientsBadge || '',
-      options: prod.options && prod.options.length > 0 ? [...prod.options] : [
-        { id: 'opt-1', name: 'Unidade Tradicional', price: 10 }
-      ],
+      options:
+        prod.options && prod.options.length > 0
+          ? prod.options.map((o) => ({
+              ...o,
+              images: o.images && o.images.length > 0 ? [...o.images] : (o.id === 'opcao-padrao-10' || o.price === 10 ? ['/images/palha-real-2.jpg', '/images/palha-real-1.jpg'] : o.id === 'opcao-especial-15' || o.price === 15 ? ['/images/palha-real-3.jpg', '/images/palha-real-1.jpg'] : [prod.image]),
+            }))
+          : [{ id: 'opt-1', name: 'Unidade Tradicional', price: 10, images: [] }],
     });
     setIsProductFormOpen(true);
   };
@@ -257,6 +261,54 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
     } catch (err: any) {
       alert(err.message || 'Erro ao processar imagem');
     }
+  };
+
+  const handleOptionImagesUpload = async (
+    optIdx: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const newImages: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) continue;
+        const dataUrl = await processImageFile(file);
+        newImages.push(dataUrl);
+      }
+
+      if (newImages.length === 0) return;
+
+      setProdForm((prev) => ({
+        ...prev,
+        options: prev.options.map((opt, i) =>
+          i === optIdx
+            ? { ...opt, images: [...(opt.images || []), ...newImages] }
+            : opt
+        ),
+      }));
+
+      showNotification(`${newImages.length} foto(s) adicionada(s) à apresentação!`);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao processar imagens da apresentação');
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveOptionImage = (optIdx: number, imgIdx: number) => {
+    setProdForm((prev) => ({
+      ...prev,
+      options: prev.options.map((opt, i) => {
+        if (i !== optIdx) return opt;
+        return {
+          ...opt,
+          images: (opt.images || []).filter((_, idx) => idx !== imgIdx),
+        };
+      }),
+    }));
   };
 
   const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -669,9 +721,14 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
                       {/* Opções de Apresentação e Preço */}
                       <div className="pt-2 border-t border-[#E8D7B7] space-y-3">
                         <div className="flex justify-between items-center">
-                          <label className="text-xs uppercase font-bold text-[#8B5E3C]">
-                            Apresentações e Preços
-                          </label>
+                          <div>
+                            <label className="text-xs uppercase font-bold text-[#8B5E3C] block">
+                              Apresentações, Preços e Galerias de Fotos
+                            </label>
+                            <span className="text-[11px] text-[#3A2214]/70">
+                              Cada opção pode ter sua própria galeria de fotos independente.
+                            </span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => {
@@ -684,77 +741,155 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
                                     name: `Opção ${prev.options.length + 1}`,
                                     description: '',
                                     price: 10,
+                                    images: [],
                                   },
                                 ],
                               }));
                             }}
-                            className="text-xs font-semibold text-[#8B5E3C] hover:text-[#3A2214] flex items-center gap-1"
+                            className="text-xs font-semibold text-[#8B5E3C] hover:text-[#3A2214] flex items-center gap-1 shrink-0"
                           >
                             <Plus size={13} />
                             <span>Adicionar Opção</span>
                           </button>
                         </div>
 
-                        {prodForm.options.map((opt, idx) => (
-                          <div
-                            key={opt.id}
-                            className="p-3 rounded-xl border border-[#E8D7B7] bg-[#E8D7B7]/20 grid grid-cols-12 gap-2 items-center"
-                          >
-                            <div className="col-span-6">
-                              <input
-                                type="text"
-                                value={opt.name}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setProdForm((prev) => ({
-                                    ...prev,
-                                    options: prev.options.map((o, i) =>
-                                      i === idx ? { ...o, name: val } : o
-                                    ),
-                                  }));
-                                }}
-                                placeholder="Nome da opção"
-                                className="w-full px-2.5 py-1.5 rounded-lg border border-[#E8D7B7] bg-[#F7EEDC] text-xs font-semibold text-[#3A2214]"
-                              />
-                            </div>
+                        {prodForm.options.map((opt, idx) => {
+                          const optImages = opt.images || [];
+                          return (
+                            <div
+                              key={opt.id}
+                              className="p-3 sm:p-4 rounded-xl border border-[#E8D7B7] bg-[#E8D7B7]/20 space-y-3"
+                            >
+                              {/* Linha principal: Nome, Preço, Excluir opção */}
+                              <div className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-6">
+                                  <label className="text-[10px] uppercase font-bold text-[#8B5E3C] block mb-1">
+                                    Nome da Apresentação
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={opt.name}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setProdForm((prev) => ({
+                                        ...prev,
+                                        options: prev.options.map((o, i) =>
+                                          i === idx ? { ...o, name: val } : o
+                                        ),
+                                      }));
+                                    }}
+                                    placeholder="Ex: Opção 1 — R$ 10,00"
+                                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#E8D7B7] bg-[#F7EEDC] text-xs font-semibold text-[#3A2214]"
+                                  />
+                                </div>
 
-                            <div className="col-span-4 flex items-center gap-1">
-                              <span className="text-xs text-[#8B5E3C] font-bold">R$</span>
-                              <input
-                                type="number"
-                                step="0.5"
-                                value={opt.price}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
-                                  setProdForm((prev) => ({
-                                    ...prev,
-                                    options: prev.options.map((o, i) =>
-                                      i === idx ? { ...o, price: val } : o
-                                    ),
-                                  }));
-                                }}
-                                className="w-full px-2.5 py-1.5 rounded-lg border border-[#E8D7B7] bg-[#F7EEDC] text-xs font-bold text-[#3A2214]"
-                              />
-                            </div>
+                                <div className="col-span-4 flex flex-col justify-end">
+                                  <label className="text-[10px] uppercase font-bold text-[#8B5E3C] block mb-1">
+                                    Preço
+                                  </label>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-[#8B5E3C] font-bold">R$</span>
+                                    <input
+                                      type="number"
+                                      step="0.5"
+                                      value={opt.price}
+                                      onChange={(e) => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        setProdForm((prev) => ({
+                                          ...prev,
+                                          options: prev.options.map((o, i) =>
+                                            i === idx ? { ...o, price: val } : o
+                                          ),
+                                        }));
+                                      }}
+                                      className="w-full px-2.5 py-1.5 rounded-lg border border-[#E8D7B7] bg-[#F7EEDC] text-xs font-bold text-[#3A2214]"
+                                    />
+                                  </div>
+                                </div>
 
-                            <div className="col-span-2 text-right">
-                              {prodForm.options.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setProdForm((prev) => ({
-                                      ...prev,
-                                      options: prev.options.filter((_, i) => i !== idx),
-                                    }));
-                                  }}
-                                  className="text-red-700 hover:text-red-900 p-1"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              )}
+                                <div className="col-span-2 text-right pt-3">
+                                  {prodForm.options.length > 1 && (
+                                    <button
+                                      type="button"
+                                      title="Excluir apresentação"
+                                      onClick={() => {
+                                        setProdForm((prev) => ({
+                                          ...prev,
+                                          options: prev.options.filter((_, i) => i !== idx),
+                                        }));
+                                      }}
+                                      className="text-red-700 hover:text-red-900 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Galeria de Fotos da Apresentação */}
+                              <div className="pt-2 border-t border-[#E8D7B7]/60">
+                                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                                  <div className="flex items-center gap-1.5">
+                                    <ImageIcon size={13} className="text-[#8B5E3C]" />
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#8B5E3C]">
+                                      Fotos desta opção
+                                    </span>
+                                    <span className="text-[10px] bg-[#3A2214] text-[#D4AF7C] px-1.5 py-0.5 rounded-full font-semibold">
+                                      {optImages.length}
+                                    </span>
+                                  </div>
+
+                                  <label className="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#3A2214] bg-[#F7EEDC] hover:bg-[#E8D7B7] border border-[#D4AF7C]/60 px-2.5 py-1 rounded-md transition-colors shadow-2xs">
+                                    <Upload size={12} className="text-[#8B5E3C]" />
+                                    <span>+ Adicionar Foto(s)</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      multiple
+                                      className="hidden"
+                                      onChange={(e) => handleOptionImagesUpload(idx, e)}
+                                    />
+                                  </label>
+                                </div>
+
+                                {/* Lista de fotos adicionadas */}
+                                {optImages.length > 0 ? (
+                                  <div className="flex flex-wrap gap-2 items-center">
+                                    {optImages.map((imgUrl, imgIdx) => (
+                                      <div
+                                        key={imgIdx}
+                                        className="relative group w-14 h-14 rounded-lg overflow-hidden border border-[#D4AF7C] bg-white shadow-2xs shrink-0"
+                                      >
+                                        <img
+                                          src={imgUrl}
+                                          alt={`Opção ${opt.name} foto ${imgIdx + 1}`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveOptionImage(idx, imgIdx)}
+                                          title="Remover esta foto"
+                                          className="absolute top-0.5 right-0.5 bg-red-600 hover:bg-red-700 text-white p-0.5 rounded-full shadow-sm opacity-90 hover:opacity-100 transition-opacity"
+                                        >
+                                          <X size={11} />
+                                        </button>
+                                        {imgIdx === 0 && (
+                                          <span className="absolute bottom-0 inset-x-0 bg-[#3A2214]/85 text-[#D4AF7C] text-[8px] font-bold text-center py-0.5">
+                                            1ª Foto
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-[11px] text-[#3A2214]/65 italic">
+                                    Sem fotos específicas nesta opção. Clique em "+ Adicionar Foto(s)" para subir fotos que aparecerão quando o cliente escolher esta opção.
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {/* Disponibilidade */}
