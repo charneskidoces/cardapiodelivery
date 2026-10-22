@@ -673,6 +673,8 @@ function AppContent() {
           items={cart}
           appliedCoupon={appliedCoupon}
           couponDiscount={couponDiscount}
+          onApplyCoupon={handleApplyCoupon}
+          onRemoveCoupon={handleRemoveCoupon}
           onClose={() => setIsCheckoutOpen(false)}
           onOrderSent={() => {
             setCart([]);
@@ -955,12 +957,16 @@ function CheckoutModal({
   items,
   appliedCoupon,
   couponDiscount,
+  onApplyCoupon,
+  onRemoveCoupon,
   onClose,
   onOrderSent,
 }: {
   items: CartItem[];
   appliedCoupon: Coupon | null;
   couponDiscount: number;
+  onApplyCoupon?: (code: string) => { success: boolean; message: string };
+  onRemoveCoupon?: () => void;
   onClose: () => void;
   onOrderSent: () => void;
 }) {
@@ -972,6 +978,10 @@ function CheckoutModal({
   const [reference, setReference] = useState('');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Cupom no Checkout
+  const [checkoutCouponInput, setCheckoutCouponInput] = useState('');
+  const [checkoutCouponMsg, setCheckoutCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Geolocalização GPS
   const [isLocating, setIsLocating] = useState(false);
@@ -1006,10 +1016,10 @@ function CheckoutModal({
         setIsLocating(false);
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            setGpsError('Permissão de localização negada. Ative nas configurações do navegador.');
+            setGpsError('Permissão negada. Ative a localização no navegador ou informe pelo WhatsApp.');
             break;
           case error.POSITION_UNAVAILABLE:
-            setGpsError('Localização GPS indisponível no momento.');
+            setGpsError('Sinal de GPS indisponível no momento.');
             break;
           case error.TIMEOUT:
             setGpsError('Tempo esgotado ao buscar localização.');
@@ -1024,9 +1034,10 @@ function CheckoutModal({
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!customerName.trim()) errs.customerName = 'Por favor, informe seu nome.';
-    if (deliveryType === 'entrega' && !address.trim() && !gpsCoords)
-      errs.address = 'Informe seu endereço ou compartilhe a localização pelo GPS.';
+    if (!customerName.trim()) {
+      errs.customerName = 'Por favor, informe seu nome para identificarmos seu pedido.';
+    }
+    // Endereço e GPS são 100% opcionais caso o cliente informe no WhatsApp
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -1037,39 +1048,62 @@ function CheckoutModal({
     const itemsText = items
       .map(
         (it) =>
-          `• ${it.quantity}x ${it.productName} (${it.optionName}) - ${formatBRL(it.price * it.quantity)}`
+          `• *${it.quantity}x* ${it.productName} _(${it.optionName})_ — ${formatBRL(it.price * it.quantity)}`
       )
       .join('\n');
 
     let deliveryDetails = '';
     if (deliveryType === 'entrega') {
-      deliveryDetails = `🛵 *Forma de recebimento:* Entrega`;
-      if (address.trim()) deliveryDetails += `\n📍 *Endereço:* ${address.trim()}`;
-      if (reference.trim()) deliveryDetails += `\n🏷️ *Ponto de referência:* ${reference.trim()}`;
-      if (gpsCoords) deliveryDetails += `\n📍 *Localização em tempo real (GPS):*\n${gpsCoords.mapsUrl}`;
+      deliveryDetails = `🛵 *Forma de Entrega:* Delivery`;
+      if (address.trim()) {
+        deliveryDetails += `\n📍 *Endereço:* ${address.trim()}`;
+      }
+      if (reference.trim()) {
+        deliveryDetails += `\n🏷️ *Ponto de Referência:* ${reference.trim()}`;
+      }
+      if (gpsCoords) {
+        deliveryDetails += `\n🌐 *Localização GPS em Tempo Real:*\n${gpsCoords.mapsUrl}`;
+      }
+      if (!address.trim() && !gpsCoords) {
+        deliveryDetails += `\n📍 *Endereço / Localização:* Enviarei a localização aqui na conversa do WhatsApp 📍`;
+      }
       deliveryDetails += hasFreeDelivery
-        ? `\n✨ *Entrega:* Grátis (a partir de ${storeInfo.freeDeliveryMinUnits} unidades)`
-        : `\n✨ *Taxa de entrega:* A combinar`;
+        ? `\n✨ *Taxa de Entrega:* Grátis (a partir de ${storeInfo.freeDeliveryMinUnits} unidades)`
+        : `\n✨ *Taxa de Entrega:* A combinar`;
     } else {
-      deliveryDetails = `🏬 *Forma de recebimento:* Retirada no local`;
+      deliveryDetails = `🏬 *Forma de Entrega:* Retirada no Local`;
     }
 
     let couponText = '';
-    if (appliedCoupon && couponDiscount > 0)
-      couponText = `\n🎟️ *Cupom Aplicado:* ${appliedCoupon.code} (- ${formatBRL(couponDiscount)})`;
+    if (appliedCoupon && couponDiscount > 0) {
+      const discountDetail =
+        appliedCoupon.type === 'percentage'
+          ? `${appliedCoupon.value}% OFF`
+          : `${formatBRL(appliedCoupon.value)} OFF`;
+      couponText = `\n🎟️ *Cupom Aplicado:* ${appliedCoupon.code} (${discountDetail}) ➔ - ${formatBRL(couponDiscount)}`;
+    }
 
     const notesText = notes.trim() ? `\n📝 *Observações:* ${notes.trim()}` : '';
 
-    const message = `*Olá, ${storeInfo.name}! Gostaria de fazer um pedido:*
-
-🧁 *Itens do Pedido:*
-${itemsText}
-${couponText}
-💰 *Total Final:* ${formatBRL(finalTotal)}
-${deliveryDetails}${notesText}
+    const message = `*NOVO PEDIDO — ${storeInfo.name.toUpperCase()}*
+━━━━━━━━━━━━━━━━━━━━━━━
 
 👤 *Cliente:* ${customerName.trim()}
-📍 ${storeInfo.city}`;
+📅 *Data:* ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+
+🧁 *ITENS DO PEDIDO:*
+${itemsText}
+
+───────────────────────
+💵 *Subtotal:* ${formatBRL(subtotal)}${couponText}
+💰 *TOTAL FINAL:* ${formatBRL(finalTotal)}
+───────────────────────
+
+${deliveryDetails}${notesText}
+
+📍 *Cidade:* ${storeInfo.city}
+━━━━━━━━━━━━━━━━━━━━━━━
+_Olá! Acabei de montar meu pedido pelo cardápio online e aguardo a confirmação._ ✨`;
 
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/${storeInfo.whatsappNumber}?text=${encoded}`, '_blank');
@@ -1163,6 +1197,17 @@ ${deliveryDetails}${notesText}
           {/* Endereço + GPS */}
           {deliveryType === 'entrega' && (
             <div className="space-y-4 pt-2 border-t border-[#E8D7B7]">
+              {/* Aviso amigável sobre enviar localização no WhatsApp */}
+              <div className="p-3 sm:p-3.5 rounded-xl bg-[#D4AF7C]/15 border border-[#D4AF7C]/40 text-xs text-[#3A2214] flex items-start gap-2.5">
+                <Sparkles size={16} className="text-[#8B5E3C] shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-semibold block text-[#3A2214]">Prefere informar o endereço pelo WhatsApp?</span>
+                  <span className="text-[#3A2214]/80 text-[11px]">
+                    Sem problemas! Você pode preencher apenas o seu <strong>Nome</strong> agora e nos enviar sua localização ou endereço diretamente na conversa.
+                  </span>
+                </div>
+              </div>
+
               {/* GPS */}
               <div className="p-3 sm:p-4 rounded-xl border-2 border-dashed border-[#D4AF7C] bg-[#E8D7B7]/30 space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
@@ -1178,7 +1223,7 @@ ${deliveryDetails}${notesText}
                   )}
                 </div>
                 <p className="text-[11px] text-[#3A2214]/75 leading-relaxed">
-                  Compartilhe sua localização em tempo real com o entregador via Google Maps.
+                  Compartilhe sua localização exata para o entregador chegar sem erros via Google Maps.
                 </p>
 
                 {gpsCoords ? (
@@ -1230,9 +1275,14 @@ ${deliveryDetails}${notesText}
 
               {/* Endereço */}
               <div>
-                <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] block mb-1.5">
-                  Endereço Completo <span className="text-[#3A2214]">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C]">
+                    Endereço por Escrito
+                  </label>
+                  <span className="text-[10px] text-[#8B5E3C]/70 italic">
+                    (opcional se enviar GPS ou no WhatsApp)
+                  </span>
+                </div>
                 <input
                   type="text"
                   value={address}
@@ -1240,12 +1290,9 @@ ${deliveryDetails}${notesText}
                     setAddress(e.target.value);
                     if (errors.address) setErrors((prev) => ({ ...prev, address: '' }));
                   }}
-                  placeholder="Rua, número e bairro"
-                  className={`w-full px-4 py-3 rounded-xl border bg-[#F7EEDC] text-[#3A2214] text-sm focus:outline-none transition-colors ${
-                    errors.address ? 'border-red-500' : 'border-[#E8D7B7] focus:border-[#3A2214]'
-                  }`}
+                  placeholder="Rua, número e bairro (ou envie direto no WhatsApp)"
+                  className="w-full px-4 py-3 rounded-xl border border-[#E8D7B7] bg-[#F7EEDC] text-[#3A2214] text-sm focus:border-[#3A2214] focus:outline-none transition-colors"
                 />
-                {errors.address && <p className="text-red-600 text-xs mt-1">{errors.address}</p>}
               </div>
 
               {/* Referência */}
@@ -1278,6 +1325,78 @@ ${deliveryDetails}${notesText}
             />
           </div>
 
+          {/* Cupom de Desconto no Checkout */}
+          <div className="pt-2 border-t border-[#E8D7B7] space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] flex items-center gap-1.5">
+                <Tag size={12} />
+                <span>Cupom de Desconto</span>
+              </label>
+            </div>
+
+            {appliedCoupon ? (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-emerald-800 bg-emerald-200 px-2 py-0.5 rounded">
+                    {appliedCoupon.code}
+                  </span>
+                  <span className="text-emerald-700 font-semibold">- {formatBRL(couponDiscount)}</span>
+                  <span className="text-[11px] text-emerald-600">
+                    ({appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% OFF` : `R$ ${appliedCoupon.value} OFF`})
+                  </span>
+                </div>
+                {onRemoveCoupon && (
+                  <button
+                    type="button"
+                    onClick={onRemoveCoupon}
+                    className="text-xs text-emerald-800 hover:text-red-700 underline font-medium touch-manipulation"
+                  >
+                    Remover
+                  </button>
+                )}
+              </div>
+            ) : onApplyCoupon ? (
+              <div className="space-y-1.5">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={checkoutCouponInput}
+                    onChange={(e) => {
+                      setCheckoutCouponInput(e.target.value.toUpperCase());
+                      setCheckoutCouponMsg(null);
+                    }}
+                    placeholder="Tem cupom? Digite o código..."
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-[#E8D7B7] bg-[#F7EEDC] text-xs font-mono uppercase text-[#3A2214] focus:border-[#3A2214] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!checkoutCouponInput.trim()) return;
+                      const res = onApplyCoupon(checkoutCouponInput.trim());
+                      setCheckoutCouponMsg({
+                        type: res.success ? 'success' : 'error',
+                        text: res.message,
+                      });
+                      if (res.success) setCheckoutCouponInput('');
+                    }}
+                    className="bg-[#3A2214] text-[#F7EEDC] px-4 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#8B5E3C] transition-colors touch-manipulation"
+                  >
+                    Aplicar
+                  </button>
+                </div>
+                {checkoutCouponMsg && (
+                  <p
+                    className={`text-[11px] font-medium ${
+                      checkoutCouponMsg.type === 'success' ? 'text-emerald-700' : 'text-red-600'
+                    }`}
+                  >
+                    {checkoutCouponMsg.text}
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
+
           {/* Resumo */}
           <div className="p-4 rounded-xl bg-[#E8D7B7]/40 border border-[#D4AF7C]/30 space-y-2.5">
             <span className="text-[10px] uppercase font-bold tracking-widest text-[#8B5E3C] block">
@@ -1293,14 +1412,21 @@ ${deliveryDetails}${notesText}
                 </div>
               ))}
             </div>
+
+            <div className="border-t border-[#D4AF7C]/20 pt-2 flex justify-between text-xs text-[#8B5E3C]">
+              <span>Subtotal</span>
+              <span>{formatBRL(subtotal)}</span>
+            </div>
+
             {appliedCoupon && (
-              <div className="flex justify-between text-xs text-emerald-800 font-semibold pt-1 border-t border-[#D4AF7C]/20">
+              <div className="flex justify-between text-xs text-emerald-800 font-semibold">
                 <span>Cupom ({appliedCoupon.code})</span>
                 <span>- {formatBRL(couponDiscount)}</span>
               </div>
             )}
+
             <div className="border-t border-[#D4AF7C]/30 pt-2 flex justify-between items-baseline">
-              <span className="text-xs uppercase font-bold tracking-wider text-[#8B5E3C]">Total</span>
+              <span className="text-xs uppercase font-bold tracking-wider text-[#8B5E3C]">Total Final</span>
               <span className="font-serif text-xl font-bold text-[#3A2214]">{formatBRL(finalTotal)}</span>
             </div>
             <p className="text-[11px] text-[#8B5E3C] leading-snug">
@@ -1314,7 +1440,7 @@ ${deliveryDetails}${notesText}
 
           {/* Aviso */}
           <p className="text-[11px] text-[#3A2214]/70 leading-relaxed text-center">
-            O <strong>WhatsApp</strong> será aberto com a mensagem pronta. O pedido só é confirmado quando você enviar a mensagem.
+            O <strong>WhatsApp</strong> será aberto com a mensagem estruturada pronta para envio. O pedido só é confirmado após enviar a mensagem.
           </p>
 
           {/* Botão WhatsApp */}
