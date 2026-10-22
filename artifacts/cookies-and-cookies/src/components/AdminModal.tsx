@@ -127,22 +127,22 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="fixed inset-0 bg-[#3A2214]/65 backdrop-blur-xs" onClick={onClose} />
-        <div className="modal-enter relative w-full max-w-sm bg-[#F7EEDC] rounded-2xl shadow-2xl border-2 border-[#E8D7B7] p-6 sm:p-8 z-10 text-center">
+        <div className="fixed inset-0 bg-[#000]/70 backdrop-blur-xs" onClick={onClose} />
+        <div className="modal-enter relative w-full max-w-sm bg-[#24130A] text-[#F7EEDC] rounded-2xl shadow-2xl border-2 border-[#54321C] p-6 sm:p-8 z-10 text-center">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-[#8B5E3C] hover:text-[#3A2214]"
+            className="absolute top-4 right-4 text-[#D4AF7C] hover:text-[#F7EEDC]"
             aria-label="Fechar"
           >
             <X size={20} />
           </button>
 
-          <div className="w-14 h-14 rounded-full bg-[#3A2214] text-[#D4AF7C] flex items-center justify-center mx-auto mb-4 border border-[#D4AF7C]/40">
+          <div className="w-14 h-14 rounded-full bg-[#331C0F] text-[#D4AF7C] flex items-center justify-center mx-auto mb-4 border border-[#D4AF7C]/40">
             <Lock size={24} />
           </div>
 
-          <h3 className="font-serif text-2xl font-bold text-[#3A2214]">Área Administrativa</h3>
-          <p className="text-xs text-[#3A2214]/70 mt-1 mb-6">
+          <h3 className="font-serif text-2xl font-bold text-[#F7EEDC]">Área Administrativa</h3>
+          <p className="text-xs text-[#E8D7B7]/75 mt-1 mb-6">
             Insira a senha de administradora da Charneski Doces para gerenciar produtos, cupons e dados da loja.
           </p>
 
@@ -156,23 +156,23 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
                   setPinError('');
                 }}
                 placeholder="Senha de acesso..."
-                className="w-full px-4 py-3 rounded-xl border border-[#E8D7B7] bg-[#F7EEDC] text-sm text-[#3A2214] focus:outline-none focus:border-[#3A2214]"
+                className="w-full px-4 py-3 rounded-xl border border-[#54321C] bg-[#1A0E07] text-sm text-[#F7EEDC] placeholder-[#8B5E3C] focus:outline-none focus:border-[#D4AF7C]"
                 autoFocus
               />
               <button
                 type="button"
                 onClick={() => setShowPin(!showPin)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B5E3C]"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#D4AF7C]"
               >
                 {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
 
-            {pinError && <p className="text-red-700 text-xs">{pinError}</p>}
+            {pinError && <p className="text-red-400 text-xs">{pinError}</p>}
 
             <button
               type="submit"
-              className="w-full bg-[#3A2214] text-[#F7EEDC] py-3.5 rounded-full text-xs font-semibold uppercase tracking-wider hover:bg-[#8B5E3C] transition-colors"
+              className="w-full bg-[#E8D7B7] hover:bg-[#F7EEDC] text-[#3A2214] py-3.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors shadow-md"
             >
               Acessar Painel
             </button>
