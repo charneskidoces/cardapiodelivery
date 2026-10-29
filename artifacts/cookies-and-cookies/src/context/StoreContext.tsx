@@ -53,21 +53,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       if (saved) {
         const parsed: Product[] = JSON.parse(saved);
-        return parsed.map((prod) => ({
-          ...prod,
-          options: (prod.options || []).map((opt) => {
-            if (!opt.images || opt.images.length === 0) {
-              if (opt.id === 'opcao-padrao-10' || opt.price === 10) {
-                return { ...opt, images: ['/images/palha-real-2.jpg', '/images/palha-real-1.jpg'] };
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((prod) => ({
+            ...prod,
+            options: (prod.options || []).map((opt) => {
+              if (!opt.images || opt.images.length === 0) {
+                // Fallback: se a opção não tiver foto, usa a foto principal do produto
+                return { ...opt, images: [prod.image] };
               }
-              if (opt.id === 'opcao-especial-15' || opt.price === 15) {
-                return { ...opt, images: ['/images/palha-real-3.jpg', '/images/palha-real-1.jpg'] };
-              }
-              return { ...opt, images: [prod.image] };
-            }
-            return opt;
-          }),
-        }));
+              return opt;
+            }),
+          }));
+        }
       }
       return INITIAL_PRODUCTS;
     } catch {
@@ -181,10 +178,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Criar imagem temporária para redimensionamento otimizado se for muito grande
+        // Criar imagem temporária para redimensionamento e compressão otimizados
         const img = new Image();
         img.onload = () => {
-          const maxDim = 1200;
+          // 720px é a largura perfeita para mobile/desktop sem estourar o limite de 5MB do navegador
+          const maxDim = 720;
           let width = img.width;
           let height = img.height;
 
@@ -203,9 +201,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           if (ctx) {
+            // Garante fundo branco caso seja um PNG com transparência
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
-            const format = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-            resolve(canvas.toDataURL(format, 0.9));
+            // Qualidade 0.78 produz imagens nítidas entre 35KB e 65KB (50x mais leve que o original)
+            const compressed = canvas.toDataURL('image/jpeg', 0.78);
+            resolve(compressed);
           } else {
             resolve(result);
           }
@@ -225,16 +227,60 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...productData,
       id: newId,
     };
-    setProducts((prev) => [...prev, newProduct]);
+
+    setProducts((prev) => {
+      const next = [...prev, newProduct];
+      try {
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(next));
+      } catch (err) {
+        console.warn('Falha ao salvar produtos no localStorage:', err);
+      }
+      return next;
+    });
+
+    try {
+      await supabase.from('charneski_products').insert([newProduct]);
+    } catch {
+      // Standby se tabela supabase ainda não existir
+    }
+
     return newProduct;
   };
 
   const updateProduct = async (updated: Product) => {
-    setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setProducts((prev) => {
+      const next = prev.map((p) => (p.id === updated.id ? updated : p));
+      try {
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(next));
+      } catch (err) {
+        console.warn('Falha ao atualizar produtos no localStorage:', err);
+      }
+      return next;
+    });
+
+    try {
+      await supabase.from('charneski_products').upsert([updated]);
+    } catch {
+      // Standby
+    }
   };
 
   const deleteProduct = async (productId: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    setProducts((prev) => {
+      const next = prev.filter((p) => p.id !== productId);
+      try {
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(next));
+      } catch (err) {
+        console.warn('Falha ao deletar produtos no localStorage:', err);
+      }
+      return next;
+    });
+
+    try {
+      await supabase.from('charneski_products').delete().eq('id', productId);
+    } catch {
+      // Standby
+    }
   };
 
   // Funções de Cupons

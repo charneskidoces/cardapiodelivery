@@ -328,11 +328,23 @@ function AppContent() {
 
             {/* Cards de Produto */}
             {products.map((product) => {
+              const productOptions =
+                product.options && product.options.length > 0
+                  ? product.options
+                  : [
+                      {
+                        id: `${product.id}-opt-1`,
+                        name: 'Opção 1 — R$ 10,00',
+                        price: 10,
+                        description: 'Tamanho tradicional',
+                        images: [],
+                      },
+                    ];
               const currentSelectedOptionId =
-                selectedOptions[product.id] || product.options[0]?.id || '';
+                selectedOptions[product.id] || productOptions[0]?.id || '';
               const currentOption =
-                product.options.find((o) => o.id === currentSelectedOptionId) ||
-                product.options[0];
+                productOptions.find((o) => o.id === currentSelectedOptionId) ||
+                productOptions[0];
               const currentQty = productQuantities[product.id] || 1;
               const currentSubtotal = (currentOption?.price || 0) * currentQty;
 
@@ -455,10 +467,16 @@ function AppContent() {
                     {/* Seletor de Apresentação */}
                     <div className="space-y-2 pt-2 border-t border-[#3A2214]/20">
                       <label className="text-[10px] sm:text-xs uppercase font-bold tracking-wider text-[#8B5E3C] block">
-                        Selecione a Apresentação:
+                        {productOptions.length > 1 ? 'Selecione a Apresentação:' : 'Apresentação:'}
                       </label>
-                      <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3">
-                        {product.options.map((opt) => {
+                      <div
+                        className={`grid gap-2 sm:gap-3 ${
+                          productOptions.length > 1
+                            ? 'grid-cols-1 xs:grid-cols-2'
+                            : 'grid-cols-1'
+                        }`}
+                      >
+                        {productOptions.map((opt) => {
                           const isSelected = currentSelectedOptionId === opt.id;
                           return (
                             <button

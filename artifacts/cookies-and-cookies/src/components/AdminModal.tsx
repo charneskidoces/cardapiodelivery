@@ -219,9 +219,12 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
         prod.options && prod.options.length > 0
           ? prod.options.map((o) => ({
               ...o,
-              images: o.images && o.images.length > 0 ? [...o.images] : (o.id === 'opcao-padrao-10' || o.price === 10 ? ['/images/palha-real-2.jpg', '/images/palha-real-1.jpg'] : o.id === 'opcao-especial-15' || o.price === 15 ? ['/images/palha-real-3.jpg', '/images/palha-real-1.jpg'] : [prod.image]),
+              images:
+                o.images && o.images.length > 0
+                  ? [...o.images]
+                  : [prod.image],
             }))
-          : [{ id: 'opt-1', name: 'Unidade Tradicional', price: 10, images: [] }],
+          : [{ id: 'opt-1', name: 'Unidade Tradicional', price: 10, images: [prod.image] }],
     });
     setIsProductFormOpen(true);
   };
@@ -233,22 +236,74 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
       return;
     }
 
-    if (editingProduct) {
-      const updatedProduct = {
-        ...editingProduct,
-        ...prodForm,
-      };
-      delete (updatedProduct as any).images;
-      await updateProduct(updatedProduct);
-      showNotification(`Produto "${prodForm.name}" atualizado com sucesso!`);
-    } else {
-      await addProduct({
-        ...prodForm,
-      });
-      showNotification(`Novo produto "${prodForm.name}" cadastrado!`);
+    const finalProductImage = prodForm.image || '/images/palha-real-2.jpg';
+
+    // Filtra opções: descarta opções onde o nome foi deixado em branco
+    const cleanOptions: PresentationOption[] = prodForm.options
+      .filter((opt) => opt.name && opt.name.trim().length > 0)
+      .map((opt, i) => ({
+        ...opt,
+        id: opt.id || `opt-${Date.now()}-${i + 1}`,
+        name: opt.name.trim(),
+        price: Number(opt.price) > 0 ? Number(opt.price) : 10,
+        description: opt.description ? opt.description.trim() : '',
+        images: Array.isArray(opt.images) && opt.images.length > 0 ? opt.images : [],
+      }));
+
+    // Se nenhuma opção foi preenchida, cria a padrão de R$ 10,00
+    const finalOptions: PresentationOption[] =
+      cleanOptions.length > 0
+        ? cleanOptions
+        : [
+            {
+              id: `opt-${Date.now()}-1`,
+              name: 'Opção 1 — R$ 10,00',
+              description: 'Tamanho tradicional',
+              price: 10,
+              images: [],
+            },
+          ];
+
+    // Validar que cada opção possui pelo menos 1 foto
+    const optionsSemFoto = finalOptions.filter((o) => !o.images || o.images.length === 0);
+    if (optionsSemFoto.length > 0) {
+      alert(
+        `⚠ Cada opção precisa de pelo menos 1 foto!\n\n` +
+        `Falta(m) foto(s) em:\n` +
+        optionsSemFoto.map((o) => `• ${o.name} (R$ ${o.price.toFixed(2)})`).join('\n') +
+        `\n\nSuba a foto de cada opção na galeria abaixo do nome e preço.`
+      );
+      return;
     }
 
-    setIsProductFormOpen(false);
+    const cleanProductData = {
+      name: prodForm.name.trim(),
+      tagline: prodForm.tagline.trim() || 'Artesanal',
+      description: prodForm.description.trim(),
+      category: prodForm.category.trim() || 'Palha Italiana',
+      image: finalProductImage,
+      available: prodForm.available,
+      ingredientsBadge: prodForm.ingredientsBadge.trim() || 'Chocolate nobre & Leite Ninho',
+      options: finalOptions,
+    };
+
+    try {
+      if (editingProduct) {
+        const updatedProduct = {
+          ...editingProduct,
+          ...cleanProductData,
+        };
+        delete (updatedProduct as any).images;
+        await updateProduct(updatedProduct);
+        showNotification(`Produto "${cleanProductData.name}" atualizado com sucesso!`);
+      } else {
+        await addProduct(cleanProductData);
+        showNotification(`Novo produto "${cleanProductData.name}" cadastrado!`);
+      }
+      setIsProductFormOpen(false);
+    } catch (err: any) {
+      alert('Erro ao salvar produto: ' + (err?.message || 'Tente novamente.'));
+    }
   };
 
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,8 +311,11 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
     if (!file) return;
     try {
       const dataUrl = await processImageFile(file);
-      setProdForm((prev) => ({ ...prev, image: dataUrl }));
-      showNotification('Foto do produto carregada!');
+      setProdForm((prev) => ({
+        ...prev,
+        image: dataUrl,
+      }));
+      showNotification('Foto principal do produto carregada! Agora suba a foto de cada opção abaixo.');
     } catch (err: any) {
       alert(err.message || 'Erro ao processar imagem');
     }
@@ -726,7 +784,7 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
                               Apresentações, Preços e Galerias de Fotos
                             </label>
                             <span className="text-[11px] text-[#3A2214]/70">
-                              Cada opção pode ter sua própria galeria de fotos independente.
+                              Cada opção pode ter sua própria galeria de fotos independente. Onde deixar em branco, não será exibido.
                             </span>
                           </div>
                           <button
@@ -751,6 +809,87 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
                             <Plus size={13} />
                             <span>Adicionar Opção</span>
                           </button>
+                        </div>
+
+                        {/* Atalhos Rápidos para Escolher Opções */}
+                        <div className="p-3 rounded-xl bg-[#E8D7B7]/40 border border-[#D4AF7C]/40 space-y-2">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span className="text-[11px] uppercase font-bold text-[#8B5E3C]">
+                              Escolha rápida de formato:
+                            </span>
+                            <span className="text-[10px] text-[#3A2214]/70 italic">
+                              Deixar em branco = sem essa opção
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProdForm((prev) => ({
+                                  ...prev,
+                                  options: [
+                                    {
+                                      id: prev.options[0]?.id || `opt-${Date.now()}-1`,
+                                      name: prev.options[0]?.name?.trim() ? prev.options[0].name : 'Opção 1 — R$ 10,00',
+                                      description: prev.options[0]?.description || 'Tamanho tradicional',
+                                      price: prev.options[0]?.price || 10,
+                                      images: prev.options[0]?.images || [],
+                                    },
+                                  ],
+                                }));
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                                prodForm.options.length === 1
+                                  ? 'bg-[#3A2214] text-[#D4AF7C] border-[#3A2214] shadow-xs'
+                                  : 'bg-[#F7EEDC] text-[#3A2214] border-[#D4AF7C]/60 hover:bg-[#E8D7B7]'
+                              }`}
+                            >
+                              ✓ Apenas 1 Opção (ex: R$ 10,00)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProdForm((prev) => {
+                                  const opt1 = prev.options[0] || {
+                                    id: `opt-${Date.now()}-1`,
+                                    name: 'Opção 1 — R$ 10,00',
+                                    description: 'Tamanho tradicional',
+                                    price: 10,
+                                    images: [],
+                                  };
+                                  const opt2 = prev.options[1] || {
+                                    id: `opt-${Date.now()}-2`,
+                                    name: 'Opção 2 — R$ 15,00',
+                                    description: 'Porção especial',
+                                    price: 15,
+                                    images: [],
+                                  };
+                                  return {
+                                    ...prev,
+                                    options: [
+                                      {
+                                        ...opt1,
+                                        name: opt1.name?.trim() ? opt1.name : 'Opção 1 — R$ 10,00',
+                                        price: opt1.price || 10,
+                                      },
+                                      {
+                                        ...opt2,
+                                        name: opt2.name?.trim() ? opt2.name : 'Opção 2 — R$ 15,00',
+                                        price: opt2.price || 15,
+                                      },
+                                    ],
+                                  };
+                                });
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                                prodForm.options.length >= 2
+                                  ? 'bg-[#3A2214] text-[#D4AF7C] border-[#3A2214] shadow-xs'
+                                  : 'bg-[#F7EEDC] text-[#3A2214] border-[#D4AF7C]/60 hover:bg-[#E8D7B7]'
+                              }`}
+                            >
+                              ✓ 2 Opções (ex: R$ 10,00 e R$ 15,00)
+                            </button>
+                          </div>
                         </div>
 
                         {prodForm.options.map((opt, idx) => {
@@ -832,16 +971,18 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
                                   <div className="flex items-center gap-1.5">
                                     <ImageIcon size={13} className="text-[#8B5E3C]" />
                                     <span className="text-[11px] font-bold uppercase tracking-wider text-[#8B5E3C]">
-                                      Fotos desta opção
+                                      Foto desta opção *
                                     </span>
-                                    <span className="text-[10px] bg-[#3A2214] text-[#D4AF7C] px-1.5 py-0.5 rounded-full font-semibold">
-                                      {optImages.length}
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                                      optImages.length > 0 ? 'bg-[#3A2214] text-[#D4AF7C]' : 'bg-red-600 text-white'
+                                    }`}>
+                                      {optImages.length > 0 ? optImages.length : '!'}
                                     </span>
                                   </div>
 
                                   <label className="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#3A2214] bg-[#F7EEDC] hover:bg-[#E8D7B7] border border-[#D4AF7C]/60 px-2.5 py-1 rounded-md transition-colors shadow-2xs">
                                     <Upload size={12} className="text-[#8B5E3C]" />
-                                    <span>+ Adicionar Foto(s)</span>
+                                    <span>{optImages.length > 0 ? 'Trocar / Adicionar Foto(s)' : '⚠ Subir Foto Obrigatória'}</span>
                                     <input
                                       type="file"
                                       accept="image/*"
@@ -882,9 +1023,12 @@ export function AdminModal({ isOpen, onClose }: AdminModalProps) {
                                     ))}
                                   </div>
                                 ) : (
-                                  <p className="text-[11px] text-[#3A2214]/65 italic">
-                                    Sem fotos específicas nesta opção. Clique em "+ Adicionar Foto(s)" para subir fotos que aparecerão quando o cliente escolher esta opção.
-                                  </p>
+                                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-red-50 border border-red-200">
+                                    <AlertCircle size={14} className="text-red-600 shrink-0" />
+                                    <p className="text-[11px] text-red-800 font-semibold">
+                                      Obrigatório: suba pelo menos 1 foto para esta opção. Clique em "Subir Foto Obrigatória" acima.
+                                    </p>
+                                  </div>
                                 )}
                               </div>
                             </div>
