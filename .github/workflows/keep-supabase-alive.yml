@@ -1,0 +1,26 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Executa a cada 3 dias às 06:00 UTC para evitar que o Supabase entre em pausa (inatividade de 7 dias)
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: # Permite disparar manualmente pelo painel do GitHub Actions
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database & REST API
+        run: |
+          echo "Enviando requisição de ping para manter o Supabase ativo..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: sb_publishable_cpUuM1nm2u5H2faqgrcNxQ_O6yMQ4az" \
+            -H "Authorization: Bearer sb_publishable_cpUuM1nm2u5H2faqgrcNxQ_O6yMQ4az" \
+            "https://uiytreumbuaguqvoiczz.supabase.co/rest/v1/charneski_products?select=id&limit=1")
+          
+          echo "Status retornado: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 204 ]; then
+            echo "Sucesso! Supabase respondendo normalmente."
+          else
+            echo "Aviso: código de resposta HTTP $HTTP_STATUS"
+          fi
