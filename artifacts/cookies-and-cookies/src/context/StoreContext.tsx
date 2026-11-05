@@ -66,18 +66,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }));
         }
       }
-      return INITIAL_PRODUCTS;
+      return [];
     } catch {
-      return INITIAL_PRODUCTS;
+      return [];
     }
   });
 
   const [coupons, setCoupons] = useState<Coupon[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.COUPONS);
-      return saved ? JSON.parse(saved) : INITIAL_COUPONS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_COUPONS;
+      return [];
     }
   });
 
