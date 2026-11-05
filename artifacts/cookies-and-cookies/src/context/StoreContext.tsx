@@ -139,21 +139,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [heroInfo]);
 
-  // Tentativa opcional de sincronização inicial com o Supabase (se as tabelas existirem)
+  // Tentativa de sincronização inicial com o Supabase (se houver produtos salvos na nuvem)
   useEffect(() => {
     async function loadFromSupabase() {
       try {
-        const { data: dbProducts } = await supabase.from('charneski_products').select('*');
-        if (dbProducts && dbProducts.length > 0) {
-          setProducts(dbProducts as Product[]);
+        const { data: dbProducts, error: prodErr } = await supabase.from('charneski_products').select('*');
+        if (!prodErr && dbProducts && dbProducts.length > 0) {
+          const mappedProducts: Product[] = dbProducts.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            tagline: p.tagline,
+            description: p.description,
+            category: p.category,
+            image: p.image,
+            images: p.images,
+            available: p.available,
+            ingredientsBadge: p.ingredients_badge ?? p.ingredientsBadge,
+            options: p.options || [],
+          }));
+          setProducts(mappedProducts);
         }
 
-        const { data: dbCoupons } = await supabase.from('charneski_coupons').select('*');
-        if (dbCoupons && dbCoupons.length > 0) {
-          setCoupons(dbCoupons as Coupon[]);
+        const { data: dbCoupons, error: coupErr } = await supabase.from('charneski_coupons').select('*');
+        if (!coupErr && dbCoupons && dbCoupons.length > 0) {
+          const mappedCoupons: Coupon[] = dbCoupons.map((c: any) => ({
+            id: c.id,
+            code: c.code,
+            description: c.description,
+            type: c.type,
+            value: Number(c.value),
+            minOrderValue: c.min_order_value ? Number(c.min_order_value) : undefined,
+            isActive: c.is_active ?? true,
+          }));
+          setCoupons(mappedCoupons);
         }
       } catch (err) {
-        // Silencioso se o supabase ainda não estiver com tabelas migradas
         console.info('Supabase sync standby:', err);
       }
     }
@@ -239,9 +259,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
 
     try {
-      await supabase.from('charneski_products').insert([newProduct]);
-    } catch {
-      // Standby se tabela supabase ainda não existir
+      const payload = {
+        id: newProduct.id,
+        name: newProduct.name,
+        tagline: newProduct.tagline,
+        description: newProduct.description,
+        category: newProduct.category,
+        image: newProduct.image,
+        images: newProduct.images || [],
+        available: newProduct.available,
+        ingredients_badge: newProduct.ingredientsBadge || '',
+        options: newProduct.options || [],
+      };
+      const { error } = await supabase.from('charneski_products').insert([payload]);
+      if (error) {
+        console.warn('Supabase insert aviso:', error.message);
+      }
+    } catch (e) {
+      console.warn('Supabase standby:', e);
     }
 
     return newProduct;
@@ -259,7 +294,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
 
     try {
-      await supabase.from('charneski_products').upsert([updated]);
+      const payload = {
+        id: updated.id,
+        name: updated.name,
+        tagline: updated.tagline,
+        description: updated.description,
+        category: updated.category,
+        image: updated.image,
+        images: updated.images || [],
+        available: updated.available,
+        ingredients_badge: updated.ingredientsBadge || '',
+        options: updated.options || [],
+      };
+      await supabase.from('charneski_products').upsert([payload]);
     } catch {
       // Standby
     }
